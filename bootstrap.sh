@@ -4,7 +4,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export HERMES_HOME="$ROOT/home"
 export HERMES_INSTALL_DIR="$ROOT/hermes-agent"
-MENDER_INSTALL_HOME="$ROOT/runtime/host-home"
+MENDER_INSTALL_HOME="${TMPDIR:-/tmp}/mender-install-home-${UID:-user}"
 export COPYFILE_DISABLE=1
 export UV_LINK_MODE=copy
 export PYTHONDONTWRITEBYTECODE=1

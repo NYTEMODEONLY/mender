@@ -4,8 +4,9 @@ $env:HERMES_HOME = Join-Path $Root "home"
 $env:HERMES_INSTALL_DIR = Join-Path $Root "hermes-agent"
 $env:UV_LINK_MODE = "copy"
 $env:PYTHONDONTWRITEBYTECODE = "1"
-$MenderUserProfile = Join-Path $Root "runtime\userprofile"
-$MenderLocalAppData = Join-Path $Root "runtime\localappdata"
+$MenderInstallScratch = Join-Path ([System.IO.Path]::GetTempPath()) "mender-install-home"
+$MenderUserProfile = Join-Path $MenderInstallScratch "userprofile"
+$MenderLocalAppData = Join-Path $MenderInstallScratch "localappdata"
 
 New-Item -ItemType Directory -Force -Path $env:HERMES_HOME | Out-Null
 New-Item -ItemType Directory -Force -Path (Join-Path $Root "audit") | Out-Null
