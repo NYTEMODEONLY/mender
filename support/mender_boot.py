@@ -73,6 +73,29 @@ def load_env_file(path: Path) -> dict[str, str]:
     return values
 
 
+def save_env_value(path: Path, key: str, value: str) -> None:
+    if "\n" in value or "\r" in value:
+        raise ValueError("Environment values cannot contain newlines")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = path.read_text(encoding="utf-8", errors="replace").splitlines() if path.exists() else []
+    out: list[str] = []
+    replaced = False
+    for raw in lines:
+        stripped = raw.strip()
+        prefix = "export " if stripped.startswith("export ") else ""
+        comparable = stripped[7:].strip() if prefix else stripped
+        if comparable.startswith(f"{key}="):
+            out.append(f"{key}={value}")
+            replaced = True
+        else:
+            out.append(raw)
+    if not replaced:
+        if out and out[-1].strip():
+            out.append("")
+        out.append(f"{key}={value}")
+    path.write_text("\n".join(out) + "\n", encoding="utf-8")
+
+
 def network_probe() -> dict:
     result = {"target": "https://api.deepseek.com", "ok": False}
     try:
@@ -369,6 +392,58 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 0 if all(bool(ok) for _, ok in checks if _ != "DeepSeek API key") else 1
 
 
+def readiness_report() -> dict:
+    ensure_mender_files()
+    profile = collect_profile()
+    env_values = load_env_file(HOME / ".env")
+    report = {
+        "event": "mender_ready",
+        "profile": profile,
+        "install": install_snapshot(profile["system"]),
+        "network": network_probe(),
+        "deepseek_key_present": bool(os.environ.get("DEEPSEEK_API_KEY") or env_values.get("DEEPSEEK_API_KEY")),
+    }
+    report["ready"] = bool(
+        report["install"]["hermes_repo_exists"]
+        and report["install"]["hermes_bin_exists"]
+        and report["install"]["config_exists"]
+        and report["deepseek_key_present"]
+        and report["network"].get("ok", False)
+    )
+    write_json(AUDIT_ROOT / "ready-latest.json", report)
+    return report
+
+
+def cmd_ready(args: argparse.Namespace) -> int:
+    report = readiness_report()
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        print("Mender readiness")
+        print("----------------")
+        print(f"Hermes repo: {'ok' if report['install']['hermes_repo_exists'] else 'missing'}")
+        print(f"Hermes executable: {'ok' if report['install']['hermes_bin_exists'] else 'missing'}")
+        print(f"Hermes config: {'ok' if report['install']['config_exists'] else 'missing'}")
+        print(f"DeepSeek API key: {'ok' if report['deepseek_key_present'] else 'missing'}")
+        print(f"DeepSeek network: {'ok' if report['network'].get('ok', False) else 'missing'}")
+        print(f"Ready: {'yes' if report['ready'] else 'no'}")
+        print(f"Report: {AUDIT_ROOT / 'ready-latest.json'}")
+    return 0 if report["ready"] else 1
+
+
+def cmd_set_key(args: argparse.Namespace) -> int:
+    ensure_mender_files()
+    value = args.value
+    if not value:
+        value = getpass.getpass("DeepSeek API key: ").strip()
+    if not value:
+        print("No key provided; nothing changed.", file=sys.stderr)
+        return 1
+    save_env_value(HOME / ".env", "DEEPSEEK_API_KEY", value)
+    print(f"Saved DEEPSEEK_API_KEY to {HOME / '.env'}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Mender portable boot helper")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -384,6 +459,12 @@ def main(argv: list[str] | None = None) -> int:
     doctor = sub.add_parser("doctor")
     doctor.add_argument("--json", action="store_true")
     doctor.set_defaults(func=cmd_doctor)
+    ready = sub.add_parser("ready")
+    ready.add_argument("--json", action="store_true")
+    ready.set_defaults(func=cmd_ready)
+    set_key = sub.add_parser("set-key")
+    set_key.add_argument("--value", default="")
+    set_key.set_defaults(func=cmd_set_key)
     args = parser.parse_args(argv)
     return args.func(args)
 

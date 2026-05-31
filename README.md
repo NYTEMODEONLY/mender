@@ -27,12 +27,10 @@ bash bootstrap.sh
 Add your API key:
 
 ```bash
-nano home/.env
+bash mender.sh set-key
 ```
 
-```env
-DEEPSEEK_API_KEY=sk-your-key
-```
+You can also edit `home/.env` directly and set `DEEPSEEK_API_KEY=sk-your-key`.
 
 Start Mender:
 
@@ -50,22 +48,31 @@ notepad .\home\.env
 .\mender.cmd
 ```
 
+Or set the key from PowerShell after bootstrap:
+
+```powershell
+.\mender.cmd set-key
+```
+
 ## Healthcheck
 
 ```bash
 bash mender.sh doctor
+bash mender.sh ready
 ```
 
 Windows:
 
 ```powershell
 .\mender.cmd doctor
+.\mender.cmd ready
 ```
 
 The latest report is written to:
 
 ```text
 audit/doctor-latest.json
+audit/ready-latest.json
 ```
 
 ## Audit Logs
@@ -100,4 +107,3 @@ powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -InstallDir ..\he
 ## Safety
 
 Mender is a repair assistant, not an unattended malware-removal or disk-recovery appliance. Review commands before approving them, especially anything that changes disks, bootloaders, permissions, accounts, services, drivers, startup items, or security settings.
-

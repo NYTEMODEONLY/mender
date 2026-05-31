@@ -39,6 +39,14 @@ if ($Mode -eq "doctor-json") {
   & $PythonExe (Join-Path $Root "support\mender_boot.py") doctor --json
   exit $LASTEXITCODE
 }
+if ($Mode -eq "ready") {
+  & $PythonExe (Join-Path $Root "support\mender_boot.py") ready
+  exit $LASTEXITCODE
+}
+if ($Mode -eq "set-key") {
+  & $PythonExe (Join-Path $Root "support\mender_boot.py") set-key
+  exit $LASTEXITCODE
+}
 
 & $PythonExe (Join-Path $Root "support\mender_boot.py") start
 & $PythonExe (Join-Path $Root "support\mender_boot.py") event hermes_launch "starting Hermes chat"
