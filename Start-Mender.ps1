@@ -4,6 +4,7 @@ $env:MENDER_ROOT = $Root
 $env:HERMES_HOME = Join-Path $Root "home"
 $env:HERMES_INSTALL_DIR = Join-Path $Root "hermes-agent"
 $env:UV_LINK_MODE = "copy"
+$env:PYTHONDONTWRITEBYTECODE = "1"
 
 $Mode = if ($args.Count -gt 0) { $args[0] } else { "start" }
 

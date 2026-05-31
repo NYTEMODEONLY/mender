@@ -7,6 +7,7 @@ export HERMES_HOME="$MENDER_ROOT/home"
 export HERMES_INSTALL_DIR="$MENDER_ROOT/hermes-agent"
 export COPYFILE_DISABLE=1
 export UV_LINK_MODE=copy
+export PYTHONDONTWRITEBYTECODE=1
 
 if [ -f "$HERMES_HOME/.env" ]; then
   while IFS='=' read -r key value; do

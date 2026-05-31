@@ -6,6 +6,7 @@ export HERMES_HOME="$ROOT/home"
 export HERMES_INSTALL_DIR="$ROOT/hermes-agent"
 export COPYFILE_DISABLE=1
 export UV_LINK_MODE=copy
+export PYTHONDONTWRITEBYTECODE=1
 
 mkdir -p "$HERMES_HOME" "$ROOT/audit" "$ROOT/runtime"
 
@@ -26,4 +27,3 @@ bash "$HERMES_INSTALL_DIR/scripts/install.sh" \
 
 find "$ROOT" -name '._*' -delete 2>/dev/null || true
 echo "Mender bootstrap complete. Add DEEPSEEK_API_KEY to home/.env, then run: bash mender.sh"
-
