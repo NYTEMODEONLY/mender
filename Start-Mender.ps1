@@ -123,7 +123,21 @@ function New-MenderLogBundle {
 }
 
 trap {
-  Write-MenderLauncherFailure $_
+  try {
+    Write-MenderLauncherFailure $_
+  } catch {
+    $message = @"
+Mender Windows launcher failure
+Time: $(Get-Date -Format o)
+Mode: $Mode
+Root: $Root
+Log: $LauncherLog
+
+$($_ | Out-String)
+"@
+    try { Set-Content -Path $LatestLauncherError -Value $message -Encoding UTF8 } catch {}
+    Write-Host $message
+  }
   Stop-MenderTranscript
   exit 1
 }
