@@ -18,4 +18,6 @@ On macOS/Linux, run `bash mender.sh`. The shell launcher uses the Hermes install
 
 Before Hermes opens, Mender runs a prelaunch check. If the configured provider's API key is missing, the launcher prompts for setup instead of starting a broken chat session. The key is saved only in `home/.env` on the drive.
 
+Use `update-mender` to refresh Mender's launchers and helper scripts from `NYTEMODEONLY/mender` while preserving `home/`, `audit/`, `hermes-agent/`, and `runtime/`. Use `update-hermes` to refresh only the Hermes Agent runtime.
+
 No repair command should be treated as safe just because Mender proposed it. Review and approve repair steps deliberately.

@@ -17,6 +17,7 @@ bash -n Mender.command
 bash -n Mender.app/Contents/MacOS/Mender
 bash -n mender.sh
 bash -n update-mender.sh
+bash -n update-hermes.sh
 smoke_step "python syntax"
 python3 -m py_compile support/mender_boot.py
 smoke_step "static checks"

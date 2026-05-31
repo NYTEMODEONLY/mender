@@ -95,6 +95,8 @@ function New-MenderLogBundle {
     (Join-Path $Root "mender.ps1"),
     (Join-Path $Root "Start-Mender.ps1"),
     (Join-Path $Root "bootstrap.ps1"),
+    (Join-Path $Root "update-mender.sh"),
+    (Join-Path $Root "update-hermes.sh"),
     (Join-Path $Root "scripts\check-powershell.ps1"),
     (Join-Path $Root "scripts\smoke-test.sh"),
     (Join-Path $Root "scripts\static-check.py"),
@@ -143,6 +145,82 @@ function Invoke-HermesInstaller {
   }
 }
 
+function Set-MenderExecutableBits {
+  foreach ($candidate in @(
+    (Join-Path $Root "mender"),
+    (Join-Path $Root "Mender.command"),
+    (Join-Path $Root "Mender.desktop"),
+    (Join-Path $Root "Mender.app\Contents\MacOS\Mender"),
+    (Join-Path $Root "bootstrap.sh"),
+    (Join-Path $Root "mender.sh"),
+    (Join-Path $Root "update-mender.sh"),
+    (Join-Path $Root "update-hermes.sh"),
+    (Join-Path $Root "scripts\smoke-test.sh"),
+    (Join-Path $Root "scripts\static-check.py"),
+    (Join-Path $Root "support\mender_boot.py"),
+    (Join-Path $Root "Start-Mender.command")
+  )) {
+    if (Test-Path $candidate) {
+      try { & attrib -R $candidate 2>$null | Out-Null } catch {}
+    }
+  }
+}
+
+function Copy-MenderUpdateTree {
+  param([string]$SourceRoot)
+
+  $excludeRoots = @(".git", "home", "audit", "hermes-agent", "runtime", "__pycache__")
+  Get-ChildItem -Path $SourceRoot -Force | ForEach-Object {
+    if ($excludeRoots -contains $_.Name) {
+      return
+    }
+    $target = Join-Path $Root $_.Name
+    if ($_.PSIsContainer) {
+      if (Test-Path $target) {
+        Remove-Item -Recurse -Force $target
+      }
+      Copy-Item -Recurse -Force $_.FullName $target
+    } else {
+      Copy-Item -Force $_.FullName $target
+    }
+  }
+}
+
+function Invoke-MenderSelfUpdate {
+  $archiveUrl = if ($env:MENDER_ARCHIVE_URL) { $env:MENDER_ARCHIVE_URL } else { "https://github.com/NYTEMODEONLY/mender/archive/refs/heads/main.zip" }
+  $branch = if ($env:MENDER_BRANCH) { $env:MENDER_BRANCH } else { "main" }
+
+  if (Test-Path (Join-Path $Root ".git")) {
+    Invoke-Checked git "-C" $Root "pull" "--ff-only" "origin" $branch
+    Set-MenderExecutableBits
+    Write-Host "Mender updated from Git."
+    return
+  }
+
+  $tempRoot = Join-Path ([System.IO.Path]::GetTempPath()) "mender-self-update-$LauncherStamp"
+  $zipPath = Join-Path $tempRoot "mender.zip"
+  $extractPath = Join-Path $tempRoot "extract"
+  if (Test-Path $tempRoot) {
+    Remove-Item -Recurse -Force $tempRoot
+  }
+  New-Item -ItemType Directory -Force -Path $extractPath | Out-Null
+  try {
+    Invoke-WebRequest -UseBasicParsing -Uri $archiveUrl -OutFile $zipPath
+    Expand-Archive -Path $zipPath -DestinationPath $extractPath -Force
+    $source = Get-ChildItem -Path $extractPath -Directory | Select-Object -First 1
+    if ($null -eq $source) {
+      throw "Mender update archive did not contain a source directory"
+    }
+    Copy-MenderUpdateTree $source.FullName
+    Set-MenderExecutableBits
+    Write-Host "Mender updated from GitHub archive."
+  } finally {
+    if (Test-Path $tempRoot) {
+      Remove-Item -Recurse -Force $tempRoot
+    }
+  }
+}
+
 $EnvFile = Join-Path $env:HERMES_HOME ".env"
 function Import-MenderEnv {
   if (Test-Path $EnvFile) {
@@ -174,6 +252,11 @@ if ($Mode -eq "update" -or $Mode -eq "update-hermes") {
   Invoke-Checked git "-C" $env:HERMES_INSTALL_DIR "pull" "--ff-only" "origin" "main"
   Invoke-HermesInstaller (Join-Path $env:HERMES_INSTALL_DIR "scripts\install.ps1")
   Write-Host "Hermes Agent updated for Mender."
+  Exit-Mender 0
+}
+
+if ($Mode -eq "update-mender" -or $Mode -eq "self-update") {
+  Invoke-MenderSelfUpdate
   Exit-Mender 0
 }
 
@@ -240,7 +323,7 @@ if ($Mode -eq "note") {
   Exit-Mender $LASTEXITCODE
 }
 if ($Mode -ne "start" -and $Mode -ne "") {
-  Write-Host "Usage: .\mender.cmd [start|setup|doctor|doctor-json|ready|set-key|audit|note|logs|update|update-hermes]"
+  Write-Host "Usage: .\mender.cmd [start|setup|doctor|doctor-json|ready|set-key|audit|note|logs|update|update-hermes|update-mender|self-update]"
   Exit-Mender 2
 }
 

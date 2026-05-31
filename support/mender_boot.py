@@ -953,6 +953,7 @@ def cmd_logs(args: argparse.Namespace) -> int:
             "Start-Mender.ps1",
             "bootstrap.ps1",
             "bootstrap.sh",
+            "update-hermes.sh",
             "update-mender.sh",
             "scripts/check-powershell.ps1",
             "scripts/smoke-test.sh",

@@ -117,12 +117,15 @@ case "${1:-start}" in
     exit $?
     ;;
   update|update-hermes)
+    exec bash "$MENDER_ROOT/update-hermes.sh"
+    ;;
+  update-mender|self-update)
     exec bash "$MENDER_ROOT/update-mender.sh"
     ;;
   start|"")
     ;;
   *)
-    echo "Usage: $0 [start|setup|doctor|doctor-json|ready|set-key|audit|note|logs|update|update-hermes]"
+    echo "Usage: $0 [start|setup|doctor|doctor-json|ready|set-key|audit|note|logs|update|update-hermes|update-mender|self-update]"
     exit 2
     ;;
 esac

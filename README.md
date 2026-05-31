@@ -13,7 +13,7 @@ Mender keeps its config, sessions, and audit logs on the drive.
 - Writes startup inventory and session audit logs per host.
 - Injects the current host/session startup prompt into Hermes before the chat starts.
 - Tags Hermes sessions as `mender` and enables Hermes checkpoints.
-- Can update Hermes from Git while preserving Mender state.
+- Can update Hermes and Mender itself while preserving drive-local state.
 
 ## Quick Start On A Portable Drive
 
@@ -162,6 +162,20 @@ Bundles are written under `audit/bundles/` and intentionally exclude `home/.env`
 
 ## Update
 
+Update Mender's own launcher/helper files from the public project while preserving `home/`, `audit/`, `hermes-agent/`, and `runtime/`:
+
+```bash
+bash mender.sh update-mender
+```
+
+Windows:
+
+```powershell
+.\mender.cmd update-mender
+```
+
+Update Hermes Agent:
+
 ```bash
 bash mender.sh update-hermes
 ```
@@ -173,6 +187,8 @@ Windows:
 ```
 
 `update-hermes` pulls the latest `NousResearch/hermes-agent` source and reinstalls the runtime while preserving Mender's `home/` config, secrets, sessions, and `audit/` logs. Installer scratch HOME is sandboxed under the connected computer's temp directory so update helpers avoid writing Hermes config into the connected computer's real user home and avoid ExFAT build-cache issues.
+
+`update-mender` pulls from `NYTEMODEONLY/mender` when the drive has a Git checkout. If Mender was copied onto the drive without `.git`, it falls back to the GitHub release archive and overlays only project files, leaving local secrets, audit data, and Hermes runtime untouched.
 
 ## Safety
 

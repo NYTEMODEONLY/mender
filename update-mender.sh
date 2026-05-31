@@ -1,28 +1,66 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export HERMES_HOME="$SCRIPT_DIR/home"
-export HERMES_INSTALL_DIR="$SCRIPT_DIR/hermes-agent"
-MENDER_INSTALL_HOME="${TMPDIR:-/tmp}/mender-install-home-${UID:-user}"
-export COPYFILE_DISABLE=1
-export UV_LINK_MODE=copy
-export PYTHONDONTWRITEBYTECODE=1
-mkdir -p "$MENDER_INSTALL_HOME"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ARCHIVE_URL="${MENDER_ARCHIVE_URL:-https://github.com/NYTEMODEONLY/mender/archive/refs/heads/main.tar.gz}"
+STATE_EXCLUDES=(
+  --exclude ".git/"
+  --exclude "home/"
+  --exclude "audit/"
+  --exclude "hermes-agent/"
+  --exclude "runtime/"
+  --exclude "__pycache__/"
+  --exclude "._*"
+  --exclude ".DS_Store"
+)
 
-if ! command -v git >/dev/null 2>&1; then
-  echo "Git is required to update Hermes Agent."
-  exit 1
+ensure_tools() {
+  for tool in "$@"; do
+    if ! command -v "$tool" >/dev/null 2>&1; then
+      echo "$tool is required for Mender self-update."
+      exit 1
+    fi
+  done
+}
+
+make_executable() {
+  chmod +x \
+    "$ROOT/mender" \
+    "$ROOT/Mender.command" \
+    "$ROOT/Mender.desktop" \
+    "$ROOT/Mender.app/Contents/MacOS/Mender" \
+    "$ROOT/bootstrap.sh" \
+    "$ROOT/mender.sh" \
+    "$ROOT/update-mender.sh" \
+    "$ROOT/update-hermes.sh" \
+    "$ROOT/scripts/smoke-test.sh" \
+    "$ROOT/scripts/static-check.py" \
+    "$ROOT/support/mender_boot.py" \
+    "$ROOT/Start-Mender.command" 2>/dev/null || true
+}
+
+if [ -d "$ROOT/.git" ]; then
+  ensure_tools git
+  git -C "$ROOT" pull --ff-only origin "${MENDER_BRANCH:-main}"
+  make_executable
+  find "$ROOT" -name '._*' -delete 2>/dev/null || true
+  echo "Mender updated from Git."
+  exit 0
 fi
 
-if [ ! -d "$HERMES_INSTALL_DIR/.git" ]; then
-  rm -rf "$HERMES_INSTALL_DIR"
-  git clone --depth 1 https://github.com/NousResearch/hermes-agent.git "$HERMES_INSTALL_DIR"
-fi
+ensure_tools curl tar rsync
+tmp_dir="$(mktemp -d)"
+cleanup() {
+  rm -rf "$tmp_dir"
+}
+trap cleanup EXIT
 
-cd "$HERMES_INSTALL_DIR"
-git pull --ff-only origin main
-HOME="$MENDER_INSTALL_HOME" PATH="$MENDER_INSTALL_HOME/.local/bin:$MENDER_INSTALL_HOME/.cargo/bin:$PATH" \
-  bash scripts/install.sh --dir "$HERMES_INSTALL_DIR" --hermes-home "$HERMES_HOME" --skip-setup --skip-browser
-find "$SCRIPT_DIR" -name '._*' -delete 2>/dev/null || true
-echo "Hermes Agent updated for Mender."
+archive="$tmp_dir/mender.tar.gz"
+src="$tmp_dir/src"
+mkdir -p "$src"
+curl -fsSL "$ARCHIVE_URL" -o "$archive"
+tar -xzf "$archive" -C "$src" --strip-components 1
+rsync -a --delete "${STATE_EXCLUDES[@]}" "$src/" "$ROOT/"
+make_executable
+find "$ROOT" -name '._*' -delete 2>/dev/null || true
+echo "Mender updated from GitHub archive."
