@@ -1,0 +1,30 @@
+# Generated portable runtime
+hermes-agent/
+runtime/
+audit/
+src/
+config/
+
+# Mender local state and secrets
+home/
+home/.env
+home/logs/
+home/sessions/
+home/cron/
+home/pairing/
+home/hooks/
+home/image_cache/
+home/audio_cache/
+home/memories/
+home/checkpoints/
+home/skills/
+home/.install_method
+
+# Python / Node / OS artifacts
+__pycache__/
+*.py[cod]
+node_modules/
+package-lock.json
+._*
+**/._*
+.DS_Store

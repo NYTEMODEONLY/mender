@@ -1,0 +1,103 @@
+# Mender
+
+Mender is a portable computer-repair agent built on [Hermes Agent](https://github.com/NousResearch/hermes-agent). Put this repo on a portable drive, add a DeepSeek API key, and start a terminal repair session on a Mac, Linux, or Windows computer.
+
+Mender keeps its config, sessions, and audit logs on the drive.
+
+## What It Does
+
+- Runs Hermes Agent from the portable drive.
+- Uses DeepSeek V4 Pro through the direct DeepSeek API.
+- Opens a terminal chat focused on diagnosing and repairing the connected computer.
+- Writes startup inventory and session audit logs per host.
+- Tags Hermes sessions as `mender` and enables Hermes checkpoints.
+- Can update Hermes from Git while preserving Mender state.
+
+## Quick Start On A Portable Drive
+
+Clone this repo to the drive:
+
+```bash
+cd /Volumes/SLIM
+git clone https://github.com/NYTEMODEONLY/mender.git Mender
+cd Mender
+bash bootstrap.sh
+```
+
+Add your API key:
+
+```bash
+nano home/.env
+```
+
+```env
+DEEPSEEK_API_KEY=sk-your-key
+```
+
+Start Mender:
+
+```bash
+bash mender.sh
+```
+
+## Windows
+
+Clone the repo onto the portable drive, then run PowerShell from the Mender folder:
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1
+notepad .\home\.env
+.\mender.cmd
+```
+
+## Healthcheck
+
+```bash
+bash mender.sh doctor
+```
+
+Windows:
+
+```powershell
+.\mender.cmd doctor
+```
+
+The latest report is written to:
+
+```text
+audit/doctor-latest.json
+```
+
+## Audit Logs
+
+Each run creates:
+
+```text
+audit/<host-id>/<timestamp>/
+```
+
+The session folder contains:
+
+- `startup.json`: host profile, drive state, Hermes install state, network probe, and inventory.
+- `events.jsonl`: lifecycle events.
+- `terminal.log`: terminal transcript when supported by the host.
+- `manifest.json`: closeout hashes and file sizes.
+
+## Update
+
+```bash
+bash update-mender.sh
+```
+
+Windows:
+
+```powershell
+cd .\hermes-agent
+git pull --ff-only origin main
+powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -InstallDir ..\hermes-agent -HermesHome ..\home -SkipSetup
+```
+
+## Safety
+
+Mender is a repair assistant, not an unattended malware-removal or disk-recovery appliance. Review commands before approving them, especially anything that changes disks, bootloaders, permissions, accounts, services, drivers, startup items, or security settings.
+

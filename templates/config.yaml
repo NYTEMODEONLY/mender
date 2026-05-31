@@ -1,0 +1,15 @@
+model:
+  default: "deepseek-v4-pro"
+  provider: "deepseek"
+  base_url: "https://api.deepseek.com/v1"
+
+terminal:
+  backend: "local"
+  cwd: "."
+  timeout: 180
+  docker_mount_cwd_to_workspace: false
+  lifetime_seconds: 300
+
+agent:
+  max_turns: 90
+
