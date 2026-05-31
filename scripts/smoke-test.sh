@@ -30,8 +30,24 @@ PY
 
 python3 support/mender_boot.py start --no-inventory > "$tmp_audit/start.txt"
 test -f audit/latest-session.json
+test -f audit/sessions.jsonl
+latest_prompt="$(python3 - <<'PY'
+import json
+print(json.load(open("audit/latest-session.json"))["startup_prompt"])
+PY
+)"
+test -f "$latest_prompt"
+grep -q "Required Opening Sequence" "$latest_prompt"
 python3 support/mender_boot.py event smoke "ok"
 python3 support/mender_boot.py finish
+python3 support/mender_boot.py audit --json > "$tmp_audit/audit.json"
+python3 - <<'PY' "$tmp_audit/audit.json"
+import json, sys
+data = json.load(open(sys.argv[1]))
+assert isinstance(data, list)
+assert data
+assert "startup_prompt" in data[-1]
+PY
 python3 support/mender_boot.py ready --json > "$tmp_audit/ready.json" || true
 python3 - <<'PY' "$tmp_audit/ready.json"
 import json, sys
@@ -41,4 +57,3 @@ assert "ready" in data
 PY
 
 echo "mender smoke tests passed"
-

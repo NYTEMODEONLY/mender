@@ -48,6 +48,14 @@ if ($Mode -eq "set-key") {
   & $PythonExe (Join-Path $Root "support\mender_boot.py") set-key
   exit $LASTEXITCODE
 }
+if ($Mode -eq "audit") {
+  $auditArgs = @("audit")
+  if ($args.Count -gt 1) {
+    $auditArgs += $args[1..($args.Count - 1)]
+  }
+  & $PythonExe (Join-Path $Root "support\mender_boot.py") @auditArgs
+  exit $LASTEXITCODE
+}
 
 & $PythonExe (Join-Path $Root "support\mender_boot.py") start
 & $PythonExe (Join-Path $Root "support\mender_boot.py") event hermes_launch "starting Hermes chat"

@@ -237,6 +237,20 @@ def append_jsonl(path: Path, data: dict) -> None:
         fh.write(json.dumps(data, sort_keys=True) + "\n")
 
 
+def read_jsonl(path: Path) -> list[dict]:
+    if not path.exists():
+        return []
+    items: list[dict] = []
+    for raw in path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if not raw.strip():
+            continue
+        try:
+            items.append(json.loads(raw))
+        except json.JSONDecodeError:
+            continue
+    return items
+
+
 def ensure_mender_files() -> None:
     HOME.mkdir(parents=True, exist_ok=True)
     (HOME / "logs").mkdir(exist_ok=True)
@@ -275,9 +289,88 @@ def session_paths(profile: dict) -> dict:
         "host_dir": host_dir,
         "session_dir": session_dir,
         "startup_json": session_dir / "startup.json",
+        "startup_prompt": session_dir / "startup_prompt.md",
         "events_jsonl": session_dir / "events.jsonl",
         "terminal_log": session_dir / "terminal.log",
     }
+
+
+def startup_prompt_text(profile: dict, paths: dict, payload: dict) -> str:
+    key_status = "present" if payload["deepseek_key_present"] else "missing"
+    network_status = "reachable" if payload["network"].get("ok") else "not reachable"
+    return f"""# Mender Startup Prompt
+
+You are Mender, a portable computer-repair Hermes Agent running from this storage device.
+
+## Connected Host
+
+- Hostname: {profile["hostname"]}
+- OS: {profile["system"]} {profile["release"]}
+- Machine: {profile["machine"]}
+- User: {profile["user"]}
+- Host audit id: {profile["host_id"]}
+
+## Session Audit
+
+- Session folder: {paths["session_dir"]}
+- Startup inventory: {paths["startup_json"]}
+- Event log: {paths["events_jsonl"]}
+- Terminal transcript: {paths["terminal_log"]}
+
+## Readiness
+
+- DeepSeek API key: {key_status}
+- DeepSeek network: {network_status}
+
+## Required Opening Sequence
+
+1. Confirm the symptom or repair goal with the user.
+2. Review the startup inventory before proposing changes.
+3. Diagnose with read-only commands first.
+4. Explain every repair command before running it, including risk and rollback.
+5. Record what changed, why, and how it was verified.
+
+Do not claim the computer is fixed until the relevant current-state evidence proves it.
+"""
+
+
+def update_audit_index(profile: dict, paths: dict, payload: dict) -> None:
+    host_dir = AUDIT_ROOT / "hosts"
+    host_dir.mkdir(parents=True, exist_ok=True)
+    host_record = {
+        "host_id": profile["host_id"],
+        "hostname": profile["hostname"],
+        "fqdn": profile["fqdn"],
+        "system": profile["system"],
+        "release": profile["release"],
+        "machine": profile["machine"],
+        "first_seen": profile["collected_at"],
+        "last_seen": profile["collected_at"],
+        "last_session": str(paths["session_dir"]),
+    }
+    host_path = host_dir / f"{profile['host_id']}.json"
+    if host_path.exists():
+        existing = json.loads(host_path.read_text(encoding="utf-8"))
+        host_record["first_seen"] = existing.get("first_seen", host_record["first_seen"])
+    write_json(host_path, host_record)
+    append_jsonl(
+        AUDIT_ROOT / "sessions.jsonl",
+        {
+            "ts": now(),
+            "host_id": profile["host_id"],
+            "hostname": profile["hostname"],
+            "system": profile["system"],
+            "release": profile["release"],
+            "machine": profile["machine"],
+            "session_dir": str(paths["session_dir"]),
+            "startup_json": str(paths["startup_json"]),
+            "startup_prompt": str(paths["startup_prompt"]),
+            "events_jsonl": str(paths["events_jsonl"]),
+            "terminal_log": str(paths["terminal_log"]),
+            "deepseek_key_present": payload["deepseek_key_present"],
+            "deepseek_network_ok": payload["network"].get("ok", False),
+        },
+    )
 
 
 def cmd_start(args: argparse.Namespace) -> int:
@@ -297,7 +390,9 @@ def cmd_start(args: argparse.Namespace) -> int:
         "hermes_bin": str(hermes_bin(profile["system"])),
     }
     write_json(paths["startup_json"], payload)
+    paths["startup_prompt"].write_text(startup_prompt_text(profile, paths, payload), encoding="utf-8")
     append_jsonl(paths["events_jsonl"], {"ts": now(), **payload})
+    update_audit_index(profile, paths, payload)
     latest = AUDIT_ROOT / "latest-session.json"
     write_json(latest, {k: str(v) for k, v in paths.items()} | {"host_id": profile["host_id"]})
 
@@ -307,6 +402,7 @@ def cmd_start(args: argparse.Namespace) -> int:
     print(f"Host: {profile['hostname']} ({profile['system']} {profile['release']}, {profile['machine']})")
     print(f"Host audit id: {profile['host_id']}")
     print(f"Audit folder: {paths['session_dir']}")
+    print(f"Startup prompt: {paths['startup_prompt']}")
     print(f"Hermes home: {HOME}")
     print("")
     if not os.environ.get("DEEPSEEK_API_KEY"):
@@ -346,7 +442,7 @@ def cmd_finish(args: argparse.Namespace) -> int:
         "host_id": data.get("host_id"),
         "files": {},
     }
-    for name in ("startup_json", "events_jsonl", "terminal_log"):
+    for name in ("startup_json", "startup_prompt", "events_jsonl", "terminal_log"):
         path = Path(data[name])
         manifest["files"][name] = {
             "path": str(path),
@@ -444,6 +540,31 @@ def cmd_set_key(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_audit(args: argparse.Namespace) -> int:
+    ensure_mender_files()
+    sessions = read_jsonl(AUDIT_ROOT / "sessions.jsonl")
+    if args.host:
+        sessions = [s for s in sessions if s.get("host_id") == args.host or s.get("hostname") == args.host]
+    sessions = sessions[-args.limit :]
+    if args.json:
+        print(json.dumps(sessions, indent=2, sort_keys=True))
+        return 0
+    print("Mender audit sessions")
+    print("---------------------")
+    if not sessions:
+        print("No sessions recorded yet.")
+        return 0
+    for item in sessions:
+        print(
+            f"{item.get('ts', '')}  "
+            f"{item.get('host_id', '')}  "
+            f"{item.get('hostname', '')}  "
+            f"{item.get('system', '')} {item.get('release', '')}  "
+            f"{item.get('session_dir', '')}"
+        )
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Mender portable boot helper")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -465,6 +586,11 @@ def main(argv: list[str] | None = None) -> int:
     set_key = sub.add_parser("set-key")
     set_key.add_argument("--value", default="")
     set_key.set_defaults(func=cmd_set_key)
+    audit = sub.add_parser("audit")
+    audit.add_argument("--json", action="store_true")
+    audit.add_argument("--host", default="")
+    audit.add_argument("--limit", type=int, default=20)
+    audit.set_defaults(func=cmd_audit)
     args = parser.parse_args(argv)
     return args.func(args)
 

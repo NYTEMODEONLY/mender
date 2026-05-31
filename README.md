@@ -86,9 +86,27 @@ audit/<host-id>/<timestamp>/
 The session folder contains:
 
 - `startup.json`: host profile, drive state, Hermes install state, network probe, and inventory.
+- `startup_prompt.md`: the repair-session startup prompt and required opening sequence.
 - `events.jsonl`: lifecycle events.
 - `terminal.log`: terminal transcript when supported by the host.
 - `manifest.json`: closeout hashes and file sizes.
+
+Mender also keeps:
+
+- `audit/sessions.jsonl`: append-only session index.
+- `audit/hosts/<host-id>.json`: latest known profile for each connected host.
+
+List recent sessions:
+
+```bash
+bash mender.sh audit
+```
+
+Windows:
+
+```powershell
+.\mender.cmd audit
+```
 
 ## Update
 

@@ -74,13 +74,22 @@ case "${1:-start}" in
     "$BOOT_PY" "$MENDER_ROOT/support/mender_boot.py" set-key
     exit $?
     ;;
+  audit)
+    if [ -z "$BOOT_PY" ]; then
+      echo "No Python runtime found for Mender audit."
+      exit 1
+    fi
+    shift || true
+    "$BOOT_PY" "$MENDER_ROOT/support/mender_boot.py" audit "$@"
+    exit $?
+    ;;
   update)
     exec bash "$MENDER_ROOT/update-mender.sh"
     ;;
   start|"")
     ;;
   *)
-    echo "Usage: $0 [start|doctor|doctor-json|ready|set-key|update]"
+    echo "Usage: $0 [start|doctor|doctor-json|ready|set-key|audit|update]"
     exit 2
     ;;
 esac
