@@ -11,8 +11,9 @@ export COPYFILE_DISABLE=1
 export UV_LINK_MODE=copy
 export UV_PYTHON_INSTALL_DIR="$MENDER_RUNTIME_DIR/uv/python"
 export UV_PYTHON_BIN_DIR="$MENDER_RUNTIME_DIR/uv/bin"
-export UV_CACHE_DIR="$MENDER_RUNTIME_DIR/uv/cache"
+export UV_CACHE_DIR="$MENDER_INSTALL_HOME/uv-cache"
 export UV_TOOL_DIR="$MENDER_RUNTIME_DIR/uv/tools"
+export UV_PYTHON_PREFERENCE=only-managed
 export PYTHONDONTWRITEBYTECODE=1
 
 load_mender_env() {
@@ -148,6 +149,7 @@ if [ ! -x "$HERMES_INSTALL_DIR/venv/bin/hermes" ]; then
   ensure_hermes_source
   echo "Hermes runtime is missing. Installing/updating on this computer..."
   mkdir -p "$MENDER_INSTALL_HOME"
+  find "$MENDER_ROOT" "$MENDER_INSTALL_HOME" -name '._*' -delete 2>/dev/null || true
   HOME="$MENDER_INSTALL_HOME" PATH="$MENDER_INSTALL_HOME/.local/bin:$MENDER_INSTALL_HOME/.cargo/bin:$PATH" \
     bash "$HERMES_INSTALL_DIR/scripts/install.sh" \
     --dir "$HERMES_INSTALL_DIR" \

@@ -48,8 +48,10 @@ def main() -> int:
     for path in ("bootstrap.sh", "mender.sh", "update-hermes.sh"):
         text = read(path)
         require("UV_PYTHON_INSTALL_DIR" in text and "/runtime" in text, f"{path} must keep uv Python on the drive")
+        require("UV_PYTHON_PREFERENCE=only-managed" in text, f"{path} must avoid host-managed Python runtimes")
     for path, text in (("Start-Mender.ps1", start_ps), ("bootstrap.ps1", bootstrap_ps)):
         require("UV_PYTHON_INSTALL_DIR" in text and "runtime" in text, f"{path} must keep uv Python on the drive")
+        require('UV_PYTHON_PREFERENCE = "only-managed"' in text, f"{path} must avoid host-managed Python runtimes")
     require("NYTEMODEONLY/mender" in update_mender, "Mender self-update must target the public Mender repo")
     require("NYTEMODEONLY/mender" in start_ps, "Windows self-update must target the public Mender repo")
     require("NousResearch/hermes-agent" in update_hermes, "Hermes update script must target Hermes Agent")
