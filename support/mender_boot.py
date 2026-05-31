@@ -256,14 +256,17 @@ def safe_host_id(profile: dict) -> str:
 
 
 def collect_profile() -> dict:
+    fast_probe = bool(os.environ.get("MENDER_SMOKE_FAST"))
     node_uuid = ""
-    mac = uuid.getnode()
-    if (mac >> 40) % 2 == 0:
-        node_uuid = f"{mac:012x}"
+    if not fast_probe:
+        mac = uuid.getnode()
+        if (mac >> 40) % 2 == 0:
+            node_uuid = f"{mac:012x}"
+    hostname = socket.gethostname()
     profile = {
         "collected_at": now(),
-        "hostname": socket.gethostname(),
-        "fqdn": socket.getfqdn(),
+        "hostname": hostname,
+        "fqdn": hostname if fast_probe else socket.getfqdn(),
         "user": getpass.getuser(),
         "cwd": os.getcwd(),
         "system": platform.system(),
@@ -294,7 +297,7 @@ def hermes_python(system: str) -> Path:
 
 
 def install_snapshot(system: str) -> dict:
-    return {
+    snap = {
         "root_exists": ROOT.exists(),
         "home_exists": HOME.exists(),
         "config_exists": (HOME / "config.yaml").exists(),
@@ -304,9 +307,13 @@ def install_snapshot(system: str) -> dict:
         "hermes_bin_exists": hermes_bin(system).exists(),
         "hermes_python": str(hermes_python(system)),
         "hermes_python_exists": hermes_python(system).exists(),
-        "git_head": run_capture(["git", "-C", str(HERMES), "rev-parse", "--short", "HEAD"]),
-        "git_status": run_capture(["git", "-C", str(HERMES), "status", "--short"], timeout=12),
     }
+    if os.environ.get("MENDER_SMOKE_FAST"):
+        snap["fast_probe"] = True
+        return snap
+    snap["git_head"] = run_capture(["git", "-C", str(HERMES), "rev-parse", "--short", "HEAD"])
+    snap["git_status"] = run_capture(["git", "-C", str(HERMES), "status", "--short"], timeout=12)
+    return snap
 
 
 def drive_snapshot(system: str) -> dict:
