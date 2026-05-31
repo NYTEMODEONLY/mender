@@ -2,7 +2,12 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
 $env:HERMES_HOME = Join-Path $Root "home"
 $env:HERMES_INSTALL_DIR = Join-Path $Root "hermes-agent"
+$MenderRuntime = Join-Path $Root "runtime"
 $env:UV_LINK_MODE = "copy"
+$env:UV_PYTHON_INSTALL_DIR = Join-Path $MenderRuntime "uv\python"
+$env:UV_PYTHON_BIN_DIR = Join-Path $MenderRuntime "uv\bin"
+$env:UV_CACHE_DIR = Join-Path $MenderRuntime "uv\cache"
+$env:UV_TOOL_DIR = Join-Path $MenderRuntime "uv\tools"
 $env:PYTHONDONTWRITEBYTECODE = "1"
 $MenderInstallScratch = Join-Path ([System.IO.Path]::GetTempPath()) "mender-install-home"
 $MenderUserProfile = Join-Path $MenderInstallScratch "userprofile"
@@ -17,7 +22,7 @@ $script:TranscriptStarted = $false
 New-Item -ItemType Directory -Force -Path $env:HERMES_HOME | Out-Null
 New-Item -ItemType Directory -Force -Path $AuditRoot | Out-Null
 New-Item -ItemType Directory -Force -Path $LauncherLogDir | Out-Null
-New-Item -ItemType Directory -Force -Path (Join-Path $Root "runtime") | Out-Null
+New-Item -ItemType Directory -Force -Path $MenderRuntime | Out-Null
 New-Item -ItemType Directory -Force -Path $MenderUserProfile | Out-Null
 New-Item -ItemType Directory -Force -Path $MenderLocalAppData | Out-Null
 try {

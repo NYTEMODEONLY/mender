@@ -6,6 +6,8 @@ Hermes Agent itself requires Python 3.11 and installs dependencies into a virtua
 
 Because this drive is ExFAT for Mac/Windows compatibility, some Python and package-manager operations cannot use POSIX symlinks or hardlinks. The launchers set `UV_LINK_MODE=copy` to favor copy-based installs on the drive.
 
+Mender points uv's Python store and cache at `runtime/uv/` on the drive. Readiness checks fail if the Hermes Python runtime resolves back into a connected computer's user cache instead of the Mender drive.
+
 The target computer must have:
 
 - internet access for first-run dependency setup and DeepSeek API calls

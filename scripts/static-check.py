@@ -45,6 +45,11 @@ def main() -> int:
     require("Start-Mender.ps1" in ps_mender, "mender.ps1 must delegate to Start-Mender.ps1")
     require("update-hermes.sh" in read("mender.sh"), "mender.sh must route update-hermes to update-hermes.sh")
     require("update-mender.sh" in read("mender.sh"), "mender.sh must route update-mender to update-mender.sh")
+    for path in ("bootstrap.sh", "mender.sh", "update-hermes.sh"):
+        text = read(path)
+        require("UV_PYTHON_INSTALL_DIR" in text and "/runtime" in text, f"{path} must keep uv Python on the drive")
+    for path, text in (("Start-Mender.ps1", start_ps), ("bootstrap.ps1", bootstrap_ps)):
+        require("UV_PYTHON_INSTALL_DIR" in text and "runtime" in text, f"{path} must keep uv Python on the drive")
     require("NYTEMODEONLY/mender" in update_mender, "Mender self-update must target the public Mender repo")
     require("NYTEMODEONLY/mender" in start_ps, "Windows self-update must target the public Mender repo")
     require("NousResearch/hermes-agent" in update_hermes, "Hermes update script must target Hermes Agent")
@@ -72,6 +77,7 @@ def main() -> int:
     require("logs)" in read("mender.sh"), "mender.sh must expose log bundles")
     require("cmd_logs" in boot_py, "mender_boot.py must implement log bundles")
     require("cmd_llm_check" in boot_py, "mender_boot.py must implement an audited LLM chat check")
+    require("hermes_python_on_drive" in boot_py, "Mender readiness must verify Hermes Python resolves on the drive")
     require("llm-check" in read("mender.sh"), "mender.sh must expose LLM chat checks")
     require('$Mode -eq "llm-check"' in start_ps, "Start-Mender.ps1 must expose LLM chat checks")
     require("llm-check-latest.json" in boot_py, "LLM chat checks must write an audit report")
