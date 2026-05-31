@@ -52,6 +52,10 @@ def main() -> int:
     require("New-MenderLogBundle" in start_ps, "Start-Mender.ps1 must expose Windows log bundles")
     require("logs)" in read("mender.sh"), "mender.sh must expose log bundles")
     require("cmd_logs" in boot_py, "mender_boot.py must implement log bundles")
+    require("cmd_prelaunch" in boot_py, "mender_boot.py must implement prelaunch setup gating")
+    require("prelaunch" in read("mender.sh"), "mender.sh must run prelaunch before Hermes chat")
+    require('"prelaunch"' in start_ps, "Start-Mender.ps1 must run prelaunch before Hermes chat")
+    require("Import-MenderEnv" in start_ps, "Start-Mender.ps1 must reload env after interactive setup")
 
     require("Get-CimInstance Win32_DiskDrive" in boot_py, "Windows inventory must include modern disk CIM checks")
     require("Get-ComputerInfo" in boot_py, "Windows inventory must include modern OS/hardware checks")

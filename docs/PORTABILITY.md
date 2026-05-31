@@ -16,4 +16,6 @@ On a fresh Windows host, run `mender.cmd`. The PowerShell launcher uses the bund
 
 On macOS/Linux, run `bash mender.sh`. The shell launcher uses the Hermes installer in `hermes-agent/scripts/install.sh` if the runtime is missing.
 
+Before Hermes opens, Mender runs a prelaunch check. If the configured provider's API key is missing, the launcher prompts for setup instead of starting a broken chat session. The key is saved only in `home/.env` on the drive.
+
 No repair command should be treated as safe just because Mender proposed it. Review and approve repair steps deliberately.

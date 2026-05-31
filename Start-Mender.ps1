@@ -139,13 +139,22 @@ function Invoke-HermesInstaller {
 }
 
 $EnvFile = Join-Path $env:HERMES_HOME ".env"
-if (Test-Path $EnvFile) {
-  Get-Content $EnvFile | ForEach-Object {
-    if ($_ -match "^\s*#" -or $_ -notmatch "=") { return }
-    $parts = $_ -split "=", 2
-    [Environment]::SetEnvironmentVariable($parts[0].Trim(), $parts[1].Trim(), "Process")
+function Import-MenderEnv {
+  if (Test-Path $EnvFile) {
+    Get-Content $EnvFile | ForEach-Object {
+      if ($_ -match "^\s*#" -or $_ -notmatch "=") { return }
+      $parts = $_ -split "=", 2
+      $name = $parts[0].Trim()
+      if ($name.StartsWith("export ")) {
+        $name = $name.Substring(7).Trim()
+      }
+      if ($name -match "^[A-Za-z_][A-Za-z0-9_]*$") {
+        [Environment]::SetEnvironmentVariable($name, $parts[1].Trim(), "Process")
+      }
+    }
   }
 }
+Import-MenderEnv
 
 $HermesExe = Join-Path $env:HERMES_INSTALL_DIR "venv\Scripts\hermes.exe"
 $PythonExe = Join-Path $env:HERMES_INSTALL_DIR "venv\Scripts\python.exe"
@@ -221,6 +230,8 @@ if ($Mode -ne "start" -and $Mode -ne "") {
   Exit-Mender 2
 }
 
+Invoke-Checked $PythonExe (Join-Path $Root "support\mender_boot.py") "prelaunch"
+Import-MenderEnv
 Invoke-Checked $PythonExe (Join-Path $Root "support\mender_boot.py") "start"
 Invoke-Checked $PythonExe (Join-Path $Root "support\mender_boot.py") "event" "hermes_launch" "starting Hermes chat"
 

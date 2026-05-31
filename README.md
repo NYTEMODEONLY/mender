@@ -48,6 +48,8 @@ Start Mender:
 ./mender
 ```
 
+If the selected provider's API key is missing, Mender pauses before launching Hermes and offers to run setup in the same terminal. The saved key stays in `home/.env` on the portable drive.
+
 On macOS/Linux, shells normally require `./mender` for a command in the current folder. If you add the Mender folder to `PATH`, `mender` works as a bare command.
 
 Double-click launchers are also included in the drive root:

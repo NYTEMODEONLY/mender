@@ -842,6 +842,29 @@ def cmd_setup(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_prelaunch(args: argparse.Namespace) -> int:
+    ensure_mender_files()
+    env_values = load_env_file(HOME / ".env")
+    llm = llm_settings()
+    if provider_key_present(llm, env_values):
+        return 0
+
+    print("Mender prelaunch")
+    print("----------------")
+    print(f"{llm['key_env']} is missing for provider '{llm['provider']}'.")
+    print("Mender needs an LLM API key before starting the repair chat.")
+    if args.no_prompt or not sys.stdin.isatty():
+        print(f"Run setup first: mender setup   or add {llm['key_env']} to {HOME / '.env'}", file=sys.stderr)
+        return 1
+
+    selected = choose("Run setup now", "Y").strip().lower()
+    if selected in ("y", "yes"):
+        setup_args = argparse.Namespace(provider="", model="", base_url="", api_key="", skip_key=False)
+        return cmd_setup(setup_args)
+    print("Mender launch cancelled. Run setup when you are ready to add an API key.")
+    return 1
+
+
 def cmd_audit(args: argparse.Namespace) -> int:
     ensure_mender_files()
     sessions = read_jsonl(AUDIT_ROOT / "sessions.jsonl")
@@ -935,6 +958,9 @@ def main(argv: list[str] | None = None) -> int:
     setup.add_argument("--api-key", default="")
     setup.add_argument("--skip-key", action="store_true")
     setup.set_defaults(func=cmd_setup)
+    prelaunch = sub.add_parser("prelaunch")
+    prelaunch.add_argument("--no-prompt", action="store_true")
+    prelaunch.set_defaults(func=cmd_prelaunch)
     audit = sub.add_parser("audit")
     audit.add_argument("--json", action="store_true")
     audit.add_argument("--host", default="")

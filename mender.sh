@@ -10,7 +10,10 @@ export COPYFILE_DISABLE=1
 export UV_LINK_MODE=copy
 export PYTHONDONTWRITEBYTECODE=1
 
-if [ -f "$HERMES_HOME/.env" ]; then
+load_mender_env() {
+  if [ ! -f "$HERMES_HOME/.env" ]; then
+    return
+  fi
   while IFS='=' read -r key value; do
     key="${key#"${key%%[![:space:]]*}"}"
     key="${key%"${key##*[![:space:]]}"}"
@@ -23,7 +26,9 @@ if [ -f "$HERMES_HOME/.env" ]; then
       export "$key=$value"
     fi
   done < "$HERMES_HOME/.env"
-fi
+}
+
+load_mender_env
 
 BOOT_PY="$HERMES_INSTALL_DIR/venv/bin/python"
 if [ ! -x "$BOOT_PY" ]; then
@@ -125,6 +130,8 @@ if [ ! -x "$HERMES_INSTALL_DIR/venv/bin/hermes" ]; then
     --skip-browser
 fi
 
+"$HERMES_INSTALL_DIR/venv/bin/python" "$MENDER_ROOT/support/mender_boot.py" prelaunch
+load_mender_env
 "$HERMES_INSTALL_DIR/venv/bin/python" "$MENDER_ROOT/support/mender_boot.py" start
 "$HERMES_INSTALL_DIR/venv/bin/python" "$MENDER_ROOT/support/mender_boot.py" event hermes_launch "starting Hermes chat"
 

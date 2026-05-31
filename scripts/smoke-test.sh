@@ -41,6 +41,8 @@ MENDER_SMOKE_ROOT="$ROOT"
 
 smoke_step "setup"
 python3 support/mender_boot.py setup --provider deepseek --model deepseek-v4-pro --skip-key > "$tmp_audit/setup.txt"
+smoke_step "prelaunch"
+DEEPSEEK_API_KEY=smoke-key python3 support/mender_boot.py prelaunch --no-prompt
 smoke_step "config assertions"
 python3 - <<'PY'
 from pathlib import Path
