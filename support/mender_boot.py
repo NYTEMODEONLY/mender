@@ -13,6 +13,7 @@ import platform
 import socket
 import subprocess
 import sys
+import time
 import uuid
 import urllib.parse
 import urllib.request
@@ -805,6 +806,77 @@ def cmd_ready(args: argparse.Namespace) -> int:
     return 0 if report["ready"] else 1
 
 
+def cmd_llm_check(args: argparse.Namespace) -> int:
+    ensure_mender_files()
+    profile = collect_profile()
+    env_values = load_env_file(HOME / ".env")
+    llm = llm_settings()
+    env = os.environ.copy()
+    env.update(env_values)
+    env["HERMES_HOME"] = str(HOME)
+    env["HERMES_INSTALL_DIR"] = str(HERMES)
+    prompt = args.prompt or "Reply with exactly: MENDER_ONLINE"
+    expected = args.expected or "MENDER_ONLINE"
+    report = {
+        "event": "mender_llm_check",
+        "checked_at": now(),
+        "profile": profile,
+        "llm": llm,
+        "llm_key_present": provider_key_present(llm, env_values),
+        "hermes_bin": str(hermes_bin(profile["system"])),
+        "hermes_bin_exists": hermes_bin(profile["system"]).exists(),
+        "prompt": prompt,
+        "expected": expected,
+        "ok": False,
+    }
+    start_time = time.monotonic()
+    if not report["llm_key_present"]:
+        report["error"] = f"{llm['key_env']} missing"
+    elif not report["hermes_bin_exists"]:
+        report["error"] = "Hermes executable missing"
+    else:
+        try:
+            proc = subprocess.run(
+                [
+                    str(hermes_bin(profile["system"])),
+                    "--oneshot",
+                    prompt,
+                    "--provider",
+                    llm["provider"],
+                    "--model",
+                    llm["model"],
+                ],
+                cwd=ROOT,
+                text=True,
+                capture_output=True,
+                timeout=args.timeout,
+                check=False,
+                env=env,
+            )
+            stdout = proc.stdout.strip()
+            report["returncode"] = proc.returncode
+            report["stdout_tail"] = stdout[-2000:]
+            report["stderr_tail"] = proc.stderr.strip()[-2000:]
+            report["ok"] = proc.returncode == 0 and expected in stdout
+        except Exception as exc:
+            report["error"] = repr(exc)
+    report["duration_seconds"] = round(time.monotonic() - start_time, 3)
+    write_json(AUDIT_ROOT / "llm-check-latest.json", report)
+    if args.json:
+        print(json.dumps(report, indent=2, sort_keys=True))
+    else:
+        print("Mender LLM check")
+        print("----------------")
+        print(f"Provider: {llm['provider']}")
+        print(f"Model: {llm['model']}")
+        print(f"Hermes executable: {'ok' if report['hermes_bin_exists'] else 'missing'}")
+        print(f"{llm['key_env']}: {'ok' if report['llm_key_present'] else 'missing'}")
+        print(f"Expected marker: {expected}")
+        print(f"Result: {'ok' if report['ok'] else 'failed'}")
+        print(f"Report: {AUDIT_ROOT / 'llm-check-latest.json'}")
+    return 0 if report["ok"] else 1
+
+
 def cmd_set_key(args: argparse.Namespace) -> int:
     ensure_mender_files()
     llm = llm_settings()
@@ -988,6 +1060,12 @@ def main(argv: list[str] | None = None) -> int:
     ready = sub.add_parser("ready")
     ready.add_argument("--json", action="store_true")
     ready.set_defaults(func=cmd_ready)
+    llm_check = sub.add_parser("llm-check", aliases=["chat-check"])
+    llm_check.add_argument("--json", action="store_true")
+    llm_check.add_argument("--prompt", default="")
+    llm_check.add_argument("--expected", default="")
+    llm_check.add_argument("--timeout", type=int, default=120)
+    llm_check.set_defaults(func=cmd_llm_check)
     set_key = sub.add_parser("set-key")
     set_key.add_argument("--value", default="")
     set_key.add_argument("--env", default="")

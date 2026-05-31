@@ -72,6 +72,15 @@ case "${1:-start}" in
     "$BOOT_PY" "$MENDER_ROOT/support/mender_boot.py" ready
     exit $?
     ;;
+  llm-check|chat-check)
+    if [ -z "$BOOT_PY" ]; then
+      echo "No Python runtime found for Mender LLM check."
+      exit 1
+    fi
+    shift || true
+    "$BOOT_PY" "$MENDER_ROOT/support/mender_boot.py" llm-check "$@"
+    exit $?
+    ;;
   set-key)
     if [ -z "$BOOT_PY" ]; then
       echo "No Python runtime found for Mender key setup."
@@ -125,7 +134,7 @@ case "${1:-start}" in
   start|"")
     ;;
   *)
-    echo "Usage: $0 [start|setup|doctor|doctor-json|ready|set-key|audit|note|logs|update|update-hermes|update-mender|self-update]"
+    echo "Usage: $0 [start|setup|doctor|doctor-json|ready|llm-check|chat-check|set-key|audit|note|logs|update|update-hermes|update-mender|self-update]"
     exit 2
     ;;
 esac

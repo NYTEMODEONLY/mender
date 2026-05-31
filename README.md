@@ -92,11 +92,24 @@ Windows:
 .\mender.cmd ready
 ```
 
-The latest report is written to:
+Check that Hermes can reach the configured LLM and produce a one-shot response:
+
+```bash
+./mender chat-check
+```
+
+Windows:
+
+```powershell
+.\mender.cmd chat-check
+```
+
+The latest reports are written to:
 
 ```text
 audit/doctor-latest.json
 audit/ready-latest.json
+audit/llm-check-latest.json
 ```
 
 ## Audit Logs

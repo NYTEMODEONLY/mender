@@ -290,6 +290,14 @@ if ($Mode -eq "ready") {
   & $PythonExe (Join-Path $Root "support\mender_boot.py") ready
   Exit-Mender $LASTEXITCODE
 }
+if ($Mode -eq "llm-check" -or $Mode -eq "chat-check") {
+  $checkArgs = @("llm-check")
+  if ($args.Count -gt 1) {
+    $checkArgs += $args[1..($args.Count - 1)]
+  }
+  & $PythonExe (Join-Path $Root "support\mender_boot.py") @checkArgs
+  Exit-Mender $LASTEXITCODE
+}
 if ($Mode -eq "set-key") {
   $keyArgs = @("set-key")
   if ($args.Count -gt 1) {
@@ -323,7 +331,7 @@ if ($Mode -eq "note") {
   Exit-Mender $LASTEXITCODE
 }
 if ($Mode -ne "start" -and $Mode -ne "") {
-  Write-Host "Usage: .\mender.cmd [start|setup|doctor|doctor-json|ready|set-key|audit|note|logs|update|update-hermes|update-mender|self-update]"
+  Write-Host "Usage: .\mender.cmd [start|setup|doctor|doctor-json|ready|llm-check|chat-check|set-key|audit|note|logs|update|update-hermes|update-mender|self-update]"
   Exit-Mender 2
 }
 
