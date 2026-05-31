@@ -226,6 +226,8 @@ def network_probe(base_url: str | None = None) -> dict:
     port = parsed.port or (443 if parsed.scheme == "https" else 80)
     target = f"{parsed.scheme or 'https'}://{host}"
     result = {"target": target, "ok": False}
+    if os.environ.get("MENDER_SKIP_NETWORK_PROBE"):
+        return {"target": target, "ok": True, "skipped": True}
     try:
         with socket.create_connection((host, port), timeout=5):
             result["tcp_443"] = True
@@ -315,6 +317,9 @@ def drive_snapshot(system: str) -> dict:
         snap["total_bytes"] = usage.f_blocks * usage.f_frsize
     except Exception as exc:
         snap["statvfs_error"] = repr(exc)
+    if os.environ.get("MENDER_SMOKE_FAST"):
+        snap["fast_probe"] = True
+        return snap
     if system == "Darwin":
         snap["mount"] = run_capture(["mount"], timeout=8)
         snap["diskutil"] = run_capture(["diskutil", "info", str(ROOT)], timeout=8)

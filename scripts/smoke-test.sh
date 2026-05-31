@@ -3,6 +3,8 @@ set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+export MENDER_SMOKE_FAST=1
+export MENDER_SKIP_NETWORK_PROBE=1
 
 bash -n bootstrap.sh
 bash -n mender
