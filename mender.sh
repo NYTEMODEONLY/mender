@@ -9,10 +9,18 @@ export COPYFILE_DISABLE=1
 export UV_LINK_MODE=copy
 
 if [ -f "$HERMES_HOME/.env" ]; then
-  set -a
-  # shellcheck disable=SC1091
-  . "$HERMES_HOME/.env"
-  set +a
+  while IFS='=' read -r key value; do
+    key="${key#"${key%%[![:space:]]*}"}"
+    key="${key%"${key##*[![:space:]]}"}"
+    value="${value%$'\r'}"
+    case "$key" in
+      ""|\#*) continue ;;
+      export\ *) key="${key#export }" ;;
+    esac
+    if [[ "$key" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+      export "$key=$value"
+    fi
+  done < "$HERMES_HOME/.env"
 fi
 
 BOOT_PY="$HERMES_INSTALL_DIR/venv/bin/python"
