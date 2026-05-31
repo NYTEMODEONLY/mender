@@ -395,8 +395,16 @@ def ensure_mender_files() -> None:
     if not config_path.exists() and (templates / "config.yaml").exists():
         config_path.write_text((templates / "config.yaml").read_text(encoding="utf-8"), encoding="utf-8")
     soul_path = HOME / "SOUL.md"
-    if not soul_path.exists() and (templates / "SOUL.md").exists():
-        soul_path.write_text((templates / "SOUL.md").read_text(encoding="utf-8"), encoding="utf-8")
+    persona_path = HOME / "MENDER_PERSONA.md"
+    if not persona_path.exists():
+        if soul_path.exists() and soul_path.read_text(encoding="utf-8", errors="replace").strip():
+            persona_path.write_text(soul_path.read_text(encoding="utf-8", errors="replace"), encoding="utf-8")
+        elif (templates / "SOUL.md").exists():
+            persona_path.write_text((templates / "SOUL.md").read_text(encoding="utf-8"), encoding="utf-8")
+        else:
+            persona_path.write_text("You are Mender, a portable computer-repair agent.\n", encoding="utf-8")
+    if not soul_path.exists():
+        soul_path.write_text(persona_path.read_text(encoding="utf-8"), encoding="utf-8")
     readme = AUDIT_ROOT / "README.md"
     if not readme.exists():
         readme.parent.mkdir(parents=True, exist_ok=True)
@@ -444,6 +452,7 @@ You are Mender, a portable computer-repair Hermes Agent running from this storag
 - Startup inventory: {paths["startup_json"]}
 - Event log: {paths["events_jsonl"]}
 - Terminal transcript: {paths["terminal_log"]}
+- Active Hermes identity prompt: {HOME / "SOUL.md"}
 
 ## Readiness
 
@@ -462,6 +471,27 @@ You are Mender, a portable computer-repair Hermes Agent running from this storag
 
 Do not claim the computer is fixed until the relevant current-state evidence proves it.
 """
+
+
+def write_active_soul(startup_text: str) -> dict:
+    persona_path = HOME / "MENDER_PERSONA.md"
+    active_soul_path = HOME / "SOUL.md"
+    persona = persona_path.read_text(encoding="utf-8", errors="replace").strip()
+    active_soul_path.write_text(
+        persona
+        + "\n\n---\n\n"
+        + "# Active Mender Repair Session\n\n"
+        + "This section is regenerated at every Mender launch and is loaded by Hermes as part "
+        + "of the session identity prompt.\n\n"
+        + startup_text.strip()
+        + "\n",
+        encoding="utf-8",
+    )
+    return {
+        "persona_path": str(persona_path),
+        "active_soul_path": str(active_soul_path),
+        "active_soul_sha256": sha256_file(active_soul_path),
+    }
 
 
 def update_audit_index(profile: dict, paths: dict, payload: dict) -> None:
@@ -495,6 +525,8 @@ def update_audit_index(profile: dict, paths: dict, payload: dict) -> None:
             "session_dir": str(paths["session_dir"]),
             "startup_json": str(paths["startup_json"]),
             "startup_prompt": str(paths["startup_prompt"]),
+            "active_soul": payload["active_soul"]["active_soul_path"],
+            "active_soul_sha256": payload["active_soul"]["active_soul_sha256"],
             "events_jsonl": str(paths["events_jsonl"]),
             "terminal_log": str(paths["terminal_log"]),
             "llm_provider": payload["llm"]["provider"],
@@ -510,6 +542,7 @@ def cmd_start(args: argparse.Namespace) -> int:
     ensure_mender_files()
     profile = collect_profile()
     paths = session_paths(profile)
+    paths["session_dir"].mkdir(parents=True, exist_ok=True)
     env_values = load_env_file(HOME / ".env")
     llm = llm_settings()
     inventory = command_inventory(profile["system"]) if not args.no_inventory else []
@@ -524,12 +557,18 @@ def cmd_start(args: argparse.Namespace) -> int:
         "llm_key_present": provider_key_present(llm, env_values),
         "hermes_bin": str(hermes_bin(profile["system"])),
     }
+    startup_text = startup_prompt_text(profile, paths, payload)
+    paths["startup_prompt"].write_text(startup_text, encoding="utf-8")
+    payload["active_soul"] = write_active_soul(startup_text)
     write_json(paths["startup_json"], payload)
-    paths["startup_prompt"].write_text(startup_prompt_text(profile, paths, payload), encoding="utf-8")
     append_jsonl(paths["events_jsonl"], {"ts": now(), **payload})
     update_audit_index(profile, paths, payload)
     latest = AUDIT_ROOT / "latest-session.json"
-    write_json(latest, {k: str(v) for k, v in paths.items()} | {"host_id": profile["host_id"]})
+    write_json(
+        latest,
+        {k: str(v) for k, v in paths.items()}
+        | {"host_id": profile["host_id"], "active_soul": payload["active_soul"]["active_soul_path"]},
+    )
 
     print("")
     print("Mender startup")
@@ -538,6 +577,7 @@ def cmd_start(args: argparse.Namespace) -> int:
     print(f"Host audit id: {profile['host_id']}")
     print(f"Audit folder: {paths['session_dir']}")
     print(f"Startup prompt: {paths['startup_prompt']}")
+    print(f"Injected Hermes prompt: {payload['active_soul']['active_soul_path']}")
     print(f"Hermes home: {HOME}")
     print("")
     if not provider_key_present(llm, env_values):
@@ -577,7 +617,9 @@ def cmd_finish(args: argparse.Namespace) -> int:
         "host_id": data.get("host_id"),
         "files": {},
     }
-    for name in ("startup_json", "startup_prompt", "events_jsonl", "terminal_log"):
+    for name in ("startup_json", "startup_prompt", "active_soul", "events_jsonl", "terminal_log"):
+        if name not in data:
+            continue
         path = Path(data[name])
         manifest["files"][name] = {
             "path": str(path),

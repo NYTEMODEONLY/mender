@@ -11,6 +11,7 @@ Mender keeps its config, sessions, and audit logs on the drive.
 - Can be reconfigured during setup for OpenRouter or another OpenAI-compatible endpoint.
 - Opens a terminal chat focused on diagnosing and repairing the connected computer.
 - Writes startup inventory and session audit logs per host.
+- Injects the current host/session startup prompt into Hermes before the chat starts.
 - Tags Hermes sessions as `mender` and enables Hermes checkpoints.
 - Can update Hermes from Git while preserving Mender state.
 
@@ -96,6 +97,7 @@ The session folder contains:
 
 - `startup.json`: host profile, drive state, Hermes install state, network probe, and inventory.
 - `startup_prompt.md`: the repair-session startup prompt and required opening sequence.
+- `home/SOUL.md`: regenerated at launch from `home/MENDER_PERSONA.md` plus the active startup prompt so Hermes sees the current host context.
 - `events.jsonl`: lifecycle events.
 - `terminal.log`: terminal transcript when supported by the host.
 - `manifest.json`: closeout hashes and file sizes.

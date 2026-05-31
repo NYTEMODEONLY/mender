@@ -47,6 +47,14 @@ PY
 )"
 test -f "$latest_prompt"
 grep -q "Required Opening Sequence" "$latest_prompt"
+active_soul="$(python3 - <<'PY'
+import json
+print(json.load(open("audit/latest-session.json"))["active_soul"])
+PY
+)"
+test -f "$active_soul"
+grep -q "Active Mender Repair Session" "$active_soul"
+grep -q "Required Opening Sequence" "$active_soul"
 python3 support/mender_boot.py event smoke "ok"
 python3 support/mender_boot.py finish
 python3 support/mender_boot.py audit --json > "$tmp_audit/audit.json"
@@ -56,6 +64,7 @@ data = json.load(open(sys.argv[1]))
 assert isinstance(data, list)
 assert data
 assert "startup_prompt" in data[-1]
+assert "active_soul" in data[-1]
 PY
 python3 support/mender_boot.py ready --json > "$tmp_audit/ready.json" || true
 python3 - <<'PY' "$tmp_audit/ready.json"
