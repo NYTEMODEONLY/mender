@@ -413,6 +413,8 @@ def read_jsonl(path: Path) -> list[dict]:
 
 def should_exclude_from_bundle(path: Path) -> bool:
     parts = set(path.parts)
+    if path.name.startswith("._") or path.name == ".DS_Store" or "__MACOSX" in parts:
+        return True
     if ".env" in parts or path.name == ".env":
         return True
     if "bundles" in parts and "audit" in parts:
@@ -867,7 +869,7 @@ def cmd_logs(args: argparse.Namespace) -> int:
     manifest = {
         "created_at": now(),
         "mender_root": str(ROOT),
-        "excluded": ["home/.env", "audit/bundles/*"],
+        "excluded": ["home/.env", "audit/bundles/*", "._*", ".DS_Store", "__MACOSX/*"],
         "note": "Bundle contains Mender audit/session/launcher logs and non-secret config files.",
     }
     with zipfile.ZipFile(bundle_path, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
