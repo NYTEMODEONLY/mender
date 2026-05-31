@@ -19,6 +19,14 @@ trap cleanup EXIT
 mkdir -p "$tmp_home" "$tmp_audit"
 MENDER_SMOKE_ROOT="$ROOT"
 
+python3 support/mender_boot.py setup --provider deepseek --model deepseek-v4-pro --skip-key > "$tmp_audit/setup.txt"
+python3 - <<'PY'
+from pathlib import Path
+config = Path("home/config.yaml").read_text(encoding="utf-8")
+assert 'provider: "deepseek"' in config
+assert 'default: "deepseek-v4-pro"' in config
+PY
+
 python3 support/mender_boot.py doctor --json > "$tmp_audit/doctor.json"
 python3 - <<'PY' "$tmp_audit/doctor.json"
 import json, sys
@@ -26,6 +34,7 @@ data = json.load(open(sys.argv[1]))
 assert data["event"] == "mender_doctor"
 assert "install" in data
 assert "network" in data
+assert data["llm"]["provider"] == "deepseek"
 PY
 
 python3 support/mender_boot.py start --no-inventory > "$tmp_audit/start.txt"

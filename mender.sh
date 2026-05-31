@@ -71,7 +71,17 @@ case "${1:-start}" in
       echo "No Python runtime found for Mender key setup."
       exit 1
     fi
-    "$BOOT_PY" "$MENDER_ROOT/support/mender_boot.py" set-key
+    shift || true
+    "$BOOT_PY" "$MENDER_ROOT/support/mender_boot.py" set-key "$@"
+    exit $?
+    ;;
+  setup)
+    if [ -z "$BOOT_PY" ]; then
+      echo "No Python runtime found for Mender setup."
+      exit 1
+    fi
+    shift || true
+    "$BOOT_PY" "$MENDER_ROOT/support/mender_boot.py" setup "$@"
     exit $?
     ;;
   audit)
@@ -83,13 +93,13 @@ case "${1:-start}" in
     "$BOOT_PY" "$MENDER_ROOT/support/mender_boot.py" audit "$@"
     exit $?
     ;;
-  update)
+  update|update-hermes)
     exec bash "$MENDER_ROOT/update-mender.sh"
     ;;
   start|"")
     ;;
   *)
-    echo "Usage: $0 [start|doctor|doctor-json|ready|set-key|audit|update]"
+    echo "Usage: $0 [start|setup|doctor|doctor-json|ready|set-key|audit|update|update-hermes]"
     exit 2
     ;;
 esac

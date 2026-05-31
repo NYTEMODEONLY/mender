@@ -1,13 +1,14 @@
 # Mender
 
-Mender is a portable computer-repair agent built on [Hermes Agent](https://github.com/NousResearch/hermes-agent). Put this repo on a portable drive, add a DeepSeek API key, and start a terminal repair session on a Mac, Linux, or Windows computer.
+Mender is a portable computer-repair agent built on [Hermes Agent](https://github.com/NousResearch/hermes-agent). Put this repo on a portable drive, choose an LLM provider, add an API key, and start a terminal repair session on a Mac, Linux, or Windows computer.
 
 Mender keeps its config, sessions, and audit logs on the drive.
 
 ## What It Does
 
 - Runs Hermes Agent from the portable drive.
-- Uses DeepSeek V4 Pro through the direct DeepSeek API.
+- Uses DeepSeek V4 Pro through the direct DeepSeek API by default.
+- Can be reconfigured during setup for OpenRouter or another OpenAI-compatible endpoint.
 - Opens a terminal chat focused on diagnosing and repairing the connected computer.
 - Writes startup inventory and session audit logs per host.
 - Tags Hermes sessions as `mender` and enables Hermes checkpoints.
@@ -24,13 +25,21 @@ cd Mender
 bash bootstrap.sh
 ```
 
-Add your API key:
+Choose your LLM and save the API key locally on the drive:
 
 ```bash
-bash mender.sh set-key
+bash mender.sh setup
 ```
 
-You can also edit `home/.env` directly and set `DEEPSEEK_API_KEY=sk-your-key`.
+DeepSeek direct is the default and uses `deepseek-v4-pro`. You can also run setup non-interactively:
+
+```bash
+bash mender.sh setup --provider deepseek
+bash mender.sh setup --provider openrouter --model deepseek/deepseek-v4-pro
+bash mender.sh setup --provider custom --model your-model --base-url https://your-provider.example/v1
+```
+
+Secrets stay in `home/.env` on the portable drive and are ignored by Git. You can also edit `home/.env` directly and set the provider-specific key, such as `DEEPSEEK_API_KEY=sk-your-key`.
 
 Start Mender:
 
@@ -44,7 +53,7 @@ Clone the repo onto the portable drive, then run PowerShell from the Mender fold
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1
-notepad .\home\.env
+.\mender.cmd setup
 .\mender.cmd
 ```
 
@@ -111,16 +120,16 @@ Windows:
 ## Update
 
 ```bash
-bash update-mender.sh
+bash mender.sh update-hermes
 ```
 
 Windows:
 
 ```powershell
-cd .\hermes-agent
-git pull --ff-only origin main
-powershell -ExecutionPolicy Bypass -File .\scripts\install.ps1 -InstallDir ..\hermes-agent -HermesHome ..\home -SkipSetup
+.\mender.cmd update-hermes
 ```
+
+`update-hermes` pulls the latest `NousResearch/hermes-agent` source and reinstalls the runtime while preserving Mender's `home/` config, secrets, sessions, and `audit/` logs.
 
 ## Safety
 

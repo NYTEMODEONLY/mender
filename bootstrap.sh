@@ -26,4 +26,4 @@ bash "$HERMES_INSTALL_DIR/scripts/install.sh" \
   --skip-browser
 
 find "$ROOT" -name '._*' -delete 2>/dev/null || true
-echo "Mender bootstrap complete. Add DEEPSEEK_API_KEY to home/.env, then run: bash mender.sh"
+echo "Mender bootstrap complete. Run: bash mender.sh setup"

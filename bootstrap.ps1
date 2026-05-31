@@ -28,4 +28,4 @@ if (!(Test-Path (Join-Path $env:HERMES_HOME "SOUL.md"))) {
 
 powershell -ExecutionPolicy Bypass -File (Join-Path $env:HERMES_INSTALL_DIR "scripts\install.ps1") -InstallDir $env:HERMES_INSTALL_DIR -HermesHome $env:HERMES_HOME -SkipSetup
 
-Write-Host "Mender bootstrap complete. Add DEEPSEEK_API_KEY to home\.env, then run .\mender.cmd"
+Write-Host "Mender bootstrap complete. Run .\mender.cmd setup"

@@ -20,6 +20,19 @@ if (Test-Path $EnvFile) {
 $HermesExe = Join-Path $env:HERMES_INSTALL_DIR "venv\Scripts\hermes.exe"
 $PythonExe = Join-Path $env:HERMES_INSTALL_DIR "venv\Scripts\python.exe"
 
+if ($Mode -eq "update" -or $Mode -eq "update-hermes") {
+  if (!(Test-Path (Join-Path $env:HERMES_INSTALL_DIR ".git"))) {
+    if (Test-Path $env:HERMES_INSTALL_DIR) {
+      Remove-Item -Recurse -Force $env:HERMES_INSTALL_DIR
+    }
+    git clone --depth 1 https://github.com/NousResearch/hermes-agent.git $env:HERMES_INSTALL_DIR
+  }
+  git -C $env:HERMES_INSTALL_DIR pull --ff-only origin main
+  powershell -ExecutionPolicy Bypass -File (Join-Path $env:HERMES_INSTALL_DIR "scripts\install.ps1") -InstallDir $env:HERMES_INSTALL_DIR -HermesHome $env:HERMES_HOME -SkipSetup
+  Write-Host "Hermes Agent updated for Mender."
+  exit 0
+}
+
 if (!(Test-Path $HermesExe)) {
   if (!(Test-Path (Join-Path $env:HERMES_INSTALL_DIR ".git"))) {
     Write-Host "Hermes Agent source is missing. Cloning NousResearch/hermes-agent..."
@@ -45,7 +58,19 @@ if ($Mode -eq "ready") {
   exit $LASTEXITCODE
 }
 if ($Mode -eq "set-key") {
-  & $PythonExe (Join-Path $Root "support\mender_boot.py") set-key
+  $keyArgs = @("set-key")
+  if ($args.Count -gt 1) {
+    $keyArgs += $args[1..($args.Count - 1)]
+  }
+  & $PythonExe (Join-Path $Root "support\mender_boot.py") @keyArgs
+  exit $LASTEXITCODE
+}
+if ($Mode -eq "setup") {
+  $setupArgs = @("setup")
+  if ($args.Count -gt 1) {
+    $setupArgs += $args[1..($args.Count - 1)]
+  }
+  & $PythonExe (Join-Path $Root "support\mender_boot.py") @setupArgs
   exit $LASTEXITCODE
 }
 if ($Mode -eq "audit") {
@@ -55,6 +80,10 @@ if ($Mode -eq "audit") {
   }
   & $PythonExe (Join-Path $Root "support\mender_boot.py") @auditArgs
   exit $LASTEXITCODE
+}
+if ($Mode -ne "start" -and $Mode -ne "") {
+  Write-Host "Usage: .\mender.cmd [start|setup|doctor|doctor-json|ready|set-key|audit|update|update-hermes]"
+  exit 2
 }
 
 & $PythonExe (Join-Path $Root "support\mender_boot.py") start

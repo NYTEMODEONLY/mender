@@ -14,6 +14,7 @@ import socket
 import subprocess
 import sys
 import uuid
+import urllib.parse
 import urllib.request
 from pathlib import Path
 
@@ -96,17 +97,143 @@ def save_env_value(path: Path, key: str, value: str) -> None:
     path.write_text("\n".join(out) + "\n", encoding="utf-8")
 
 
-def network_probe() -> dict:
-    result = {"target": "https://api.deepseek.com", "ok": False}
+def unquote_yaml_value(value: str) -> str:
+    value = value.strip()
+    if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+        return value[1:-1]
+    return value
+
+
+def shell_quote(value: str) -> str:
+    return json.dumps(value)
+
+
+def base_config_yaml(*, provider: str, model: str, base_url: str, custom: bool = False) -> str:
+    lines = [
+        "model:",
+        f"  default: {shell_quote(model)}",
+        f"  provider: {shell_quote(provider)}",
+        f"  base_url: {shell_quote(base_url)}",
+        "",
+        "terminal:",
+        '  backend: "local"',
+        '  cwd: "."',
+        "  timeout: 180",
+        "  docker_mount_cwd_to_workspace: false",
+        "  lifetime_seconds: 300",
+        "",
+        "agent:",
+        "  max_turns: 90",
+        "",
+    ]
+    if custom:
+        lines.extend(
+            [
+                "custom_providers:",
+                "  - name: \"mender-custom\"",
+                f"    base_url: {shell_quote(base_url)}",
+                "    key_env: \"MENDER_CUSTOM_API_KEY\"",
+                f"    model: {shell_quote(model)}",
+                "    api_mode: \"chat_completions\"",
+                "",
+            ]
+        )
+    return "\n".join(lines)
+
+
+def write_llm_config(provider_choice: str, model: str, base_url: str) -> tuple[str, str, str]:
+    provider_choice = provider_choice.strip().lower()
+    if provider_choice == "deepseek":
+        provider = "deepseek"
+        model = model or "deepseek-v4-pro"
+        base_url = base_url or "https://api.deepseek.com/v1"
+        key_env = "DEEPSEEK_API_KEY"
+        custom = False
+    elif provider_choice == "openrouter":
+        provider = "openrouter"
+        model = model or "deepseek/deepseek-v4-pro"
+        base_url = base_url or "https://openrouter.ai/api/v1"
+        key_env = "OPENROUTER_API_KEY"
+        custom = False
+    elif provider_choice == "custom":
+        provider = "custom:mender-custom"
+        model = model or "model-name"
+        base_url = base_url or "https://example.com/v1"
+        key_env = "MENDER_CUSTOM_API_KEY"
+        custom = True
+    else:
+        raise ValueError(f"Unsupported provider choice: {provider_choice}")
+    (HOME / "config.yaml").write_text(
+        base_config_yaml(provider=provider, model=model, base_url=base_url, custom=custom),
+        encoding="utf-8",
+    )
+    return provider, model, key_env
+
+
+def llm_settings() -> dict:
+    config_path = HOME / "config.yaml"
+    settings = {
+        "provider": "deepseek",
+        "model": "deepseek-v4-pro",
+        "base_url": "https://api.deepseek.com/v1",
+        "key_env": "DEEPSEEK_API_KEY",
+    }
+    if not config_path.exists():
+        return settings
+
+    section = ""
+    for raw in config_path.read_text(encoding="utf-8", errors="replace").splitlines():
+        if not raw.strip() or raw.lstrip().startswith("#"):
+            continue
+        if not raw.startswith((" ", "\t")) and raw.rstrip().endswith(":"):
+            section = raw.strip().rstrip(":")
+            continue
+        if ":" not in raw:
+            continue
+        key, value = raw.split(":", 1)
+        key = key.strip()
+        value = unquote_yaml_value(value)
+        if section == "model" and key == "default":
+            settings["model"] = value
+        elif section == "model" and key == "provider":
+            settings["provider"] = value
+        elif section == "model" and key == "base_url":
+            settings["base_url"] = value
+        elif key == "key_env" and settings["provider"].startswith("custom:"):
+            settings["key_env"] = value
+
+    provider = settings["provider"]
+    if provider == "deepseek":
+        settings["key_env"] = "DEEPSEEK_API_KEY"
+    elif provider == "openrouter":
+        settings["key_env"] = "OPENROUTER_API_KEY"
+    elif provider.startswith("custom:") and settings["key_env"] == "DEEPSEEK_API_KEY":
+        settings["key_env"] = "MENDER_CUSTOM_API_KEY"
+    return settings
+
+
+def provider_key_present(settings: dict, env_values: dict[str, str]) -> bool:
+    key_env = settings["key_env"]
+    return bool(os.environ.get(key_env) or env_values.get(key_env))
+
+
+def network_probe(base_url: str | None = None) -> dict:
+    parsed = urllib.parse.urlparse(base_url or "https://api.deepseek.com")
+    if not parsed.scheme:
+        parsed = urllib.parse.urlparse(f"https://{base_url}")
+    host = parsed.hostname or "api.deepseek.com"
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    target = f"{parsed.scheme or 'https'}://{host}"
+    result = {"target": target, "ok": False}
     try:
-        with socket.create_connection(("api.deepseek.com", 443), timeout=5):
+        with socket.create_connection((host, port), timeout=5):
             result["tcp_443"] = True
     except Exception as exc:
         result["tcp_443"] = False
         result["error"] = repr(exc)
         return result
     try:
-        req = urllib.request.Request("https://api.deepseek.com", method="HEAD")
+        req = urllib.request.Request(target, method="HEAD")
         with urllib.request.urlopen(req, timeout=8) as response:
             result["http_status"] = response.status
             result["ok"] = True
@@ -296,8 +423,9 @@ def session_paths(profile: dict) -> dict:
 
 
 def startup_prompt_text(profile: dict, paths: dict, payload: dict) -> str:
-    key_status = "present" if payload["deepseek_key_present"] else "missing"
+    key_status = "present" if payload["llm_key_present"] else "missing"
     network_status = "reachable" if payload["network"].get("ok") else "not reachable"
+    llm = payload["llm"]
     return f"""# Mender Startup Prompt
 
 You are Mender, a portable computer-repair Hermes Agent running from this storage device.
@@ -319,8 +447,10 @@ You are Mender, a portable computer-repair Hermes Agent running from this storag
 
 ## Readiness
 
-- DeepSeek API key: {key_status}
-- DeepSeek network: {network_status}
+- LLM provider: {llm["provider"]}
+- LLM model: {llm["model"]}
+- LLM key env: {llm["key_env"]} ({key_status})
+- LLM network: {network_status}
 
 ## Required Opening Sequence
 
@@ -367,8 +497,11 @@ def update_audit_index(profile: dict, paths: dict, payload: dict) -> None:
             "startup_prompt": str(paths["startup_prompt"]),
             "events_jsonl": str(paths["events_jsonl"]),
             "terminal_log": str(paths["terminal_log"]),
-            "deepseek_key_present": payload["deepseek_key_present"],
-            "deepseek_network_ok": payload["network"].get("ok", False),
+            "llm_provider": payload["llm"]["provider"],
+            "llm_model": payload["llm"]["model"],
+            "llm_key_env": payload["llm"]["key_env"],
+            "llm_key_present": payload["llm_key_present"],
+            "llm_network_ok": payload["network"].get("ok", False),
         },
     )
 
@@ -378,6 +511,7 @@ def cmd_start(args: argparse.Namespace) -> int:
     profile = collect_profile()
     paths = session_paths(profile)
     env_values = load_env_file(HOME / ".env")
+    llm = llm_settings()
     inventory = command_inventory(profile["system"]) if not args.no_inventory else []
     payload = {
         "event": "mender_startup",
@@ -385,8 +519,9 @@ def cmd_start(args: argparse.Namespace) -> int:
         "inventory": inventory,
         "install": install_snapshot(profile["system"]),
         "drive": drive_snapshot(profile["system"]),
-        "network": network_probe(),
-        "deepseek_key_present": bool(os.environ.get("DEEPSEEK_API_KEY") or env_values.get("DEEPSEEK_API_KEY")),
+        "network": network_probe(llm["base_url"]),
+        "llm": llm,
+        "llm_key_present": provider_key_present(llm, env_values),
         "hermes_bin": str(hermes_bin(profile["system"])),
     }
     write_json(paths["startup_json"], payload)
@@ -405,12 +540,12 @@ def cmd_start(args: argparse.Namespace) -> int:
     print(f"Startup prompt: {paths['startup_prompt']}")
     print(f"Hermes home: {HOME}")
     print("")
-    if not os.environ.get("DEEPSEEK_API_KEY"):
-        print("DEEPSEEK_API_KEY is not loaded. Add it to Mender/home/.env or your shell before online use.")
+    if not provider_key_present(llm, env_values):
+        print(f"{llm['key_env']} is not loaded. Add it to Mender/home/.env or your shell before online use.")
     if payload["network"].get("ok"):
-        print("DeepSeek network probe: reachable")
+        print(f"{llm['provider']} network probe: reachable")
     else:
-        print("DeepSeek network probe: not reachable")
+        print(f"{llm['provider']} network probe: not reachable")
     print("When Hermes opens, Mender's role is computer repair. Ask for diagnosis first; approve repairs deliberately.")
     print("")
     return 0
@@ -460,13 +595,15 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     ensure_mender_files()
     profile = collect_profile()
     env_values = load_env_file(HOME / ".env")
+    llm = llm_settings()
     report = {
         "event": "mender_doctor",
         "profile": profile,
         "install": install_snapshot(profile["system"]),
         "drive": drive_snapshot(profile["system"]),
-        "network": network_probe(),
-        "deepseek_key_present": bool(os.environ.get("DEEPSEEK_API_KEY") or env_values.get("DEEPSEEK_API_KEY")),
+        "network": network_probe(llm["base_url"]),
+        "llm": llm,
+        "llm_key_present": provider_key_present(llm, env_values),
     }
     path = AUDIT_ROOT / "doctor-latest.json"
     write_json(path, report)
@@ -477,33 +614,35 @@ def cmd_doctor(args: argparse.Namespace) -> int:
         ("Hermes repo", report["install"]["hermes_repo_exists"]),
         ("Hermes executable", report["install"]["hermes_bin_exists"]),
         ("Hermes config", report["install"]["config_exists"]),
-        ("DeepSeek API key", report["deepseek_key_present"]),
-        ("DeepSeek network", report["network"].get("ok", False)),
+        (f"{llm['provider']} API key", report["llm_key_present"]),
+        (f"{llm['provider']} network", report["network"].get("ok", False)),
     ]
     print("Mender doctor")
     print("-------------")
     for label, ok in checks:
         print(f"{label}: {'ok' if ok else 'missing'}")
     print(f"Report: {path}")
-    return 0 if all(bool(ok) for _, ok in checks if _ != "DeepSeek API key") else 1
+    return 0 if all(bool(ok) for _, ok in checks if not _.endswith(" API key")) else 1
 
 
 def readiness_report() -> dict:
     ensure_mender_files()
     profile = collect_profile()
     env_values = load_env_file(HOME / ".env")
+    llm = llm_settings()
     report = {
         "event": "mender_ready",
         "profile": profile,
         "install": install_snapshot(profile["system"]),
-        "network": network_probe(),
-        "deepseek_key_present": bool(os.environ.get("DEEPSEEK_API_KEY") or env_values.get("DEEPSEEK_API_KEY")),
+        "network": network_probe(llm["base_url"]),
+        "llm": llm,
+        "llm_key_present": provider_key_present(llm, env_values),
     }
     report["ready"] = bool(
         report["install"]["hermes_repo_exists"]
         and report["install"]["hermes_bin_exists"]
         and report["install"]["config_exists"]
-        and report["deepseek_key_present"]
+        and report["llm_key_present"]
         and report["network"].get("ok", False)
     )
     write_json(AUDIT_ROOT / "ready-latest.json", report)
@@ -520,8 +659,10 @@ def cmd_ready(args: argparse.Namespace) -> int:
         print(f"Hermes repo: {'ok' if report['install']['hermes_repo_exists'] else 'missing'}")
         print(f"Hermes executable: {'ok' if report['install']['hermes_bin_exists'] else 'missing'}")
         print(f"Hermes config: {'ok' if report['install']['config_exists'] else 'missing'}")
-        print(f"DeepSeek API key: {'ok' if report['deepseek_key_present'] else 'missing'}")
-        print(f"DeepSeek network: {'ok' if report['network'].get('ok', False) else 'missing'}")
+        print(f"LLM provider: {report['llm']['provider']}")
+        print(f"LLM model: {report['llm']['model']}")
+        print(f"{report['llm']['key_env']}: {'ok' if report['llm_key_present'] else 'missing'}")
+        print(f"{report['llm']['provider']} network: {'ok' if report['network'].get('ok', False) else 'missing'}")
         print(f"Ready: {'yes' if report['ready'] else 'no'}")
         print(f"Report: {AUDIT_ROOT / 'ready-latest.json'}")
     return 0 if report["ready"] else 1
@@ -529,14 +670,65 @@ def cmd_ready(args: argparse.Namespace) -> int:
 
 def cmd_set_key(args: argparse.Namespace) -> int:
     ensure_mender_files()
+    llm = llm_settings()
+    env_name = args.env or llm["key_env"]
     value = args.value
     if not value:
-        value = getpass.getpass("DeepSeek API key: ").strip()
+        value = getpass.getpass(f"{env_name}: ").strip()
     if not value:
         print("No key provided; nothing changed.", file=sys.stderr)
         return 1
-    save_env_value(HOME / ".env", "DEEPSEEK_API_KEY", value)
-    print(f"Saved DEEPSEEK_API_KEY to {HOME / '.env'}")
+    save_env_value(HOME / ".env", env_name, value)
+    print(f"Saved {env_name} to {HOME / '.env'}")
+    return 0
+
+
+def choose(prompt: str, default: str = "") -> str:
+    suffix = f" [{default}]" if default else ""
+    value = input(f"{prompt}{suffix}: ").strip()
+    return value or default
+
+
+def cmd_setup(args: argparse.Namespace) -> int:
+    ensure_mender_files()
+    provider_choice = args.provider.strip().lower()
+    if not provider_choice:
+        print("Mender LLM setup")
+        print("----------------")
+        print("1. DeepSeek direct (recommended): deepseek-v4-pro")
+        print("2. OpenRouter: any OpenRouter model")
+        print("3. Custom OpenAI-compatible endpoint")
+        selected = choose("Choose provider", "1")
+        provider_choice = {"1": "deepseek", "2": "openrouter", "3": "custom"}.get(selected, selected).strip().lower()
+
+    if provider_choice == "deepseek":
+        model = args.model or choose("Model", "deepseek-v4-pro")
+        base_url = args.base_url or "https://api.deepseek.com/v1"
+    elif provider_choice == "openrouter":
+        model = args.model or choose("OpenRouter model", "deepseek/deepseek-v4-pro")
+        base_url = args.base_url or "https://openrouter.ai/api/v1"
+    elif provider_choice == "custom":
+        model = args.model or choose("Model name")
+        base_url = args.base_url or choose("OpenAI-compatible base URL")
+    else:
+        print(f"Unsupported provider: {provider_choice}", file=sys.stderr)
+        return 2
+
+    provider, model, key_env = write_llm_config(provider_choice, model, base_url)
+
+    api_key = args.api_key
+    if not api_key and not args.skip_key:
+        api_key = getpass.getpass(f"{key_env}: ").strip()
+    if api_key:
+        save_env_value(HOME / ".env", key_env, api_key)
+
+    print("Mender setup complete")
+    print(f"Provider: {provider}")
+    print(f"Model: {model}")
+    print(f"Config: {HOME / 'config.yaml'}")
+    print(f"Secrets: {HOME / '.env'}")
+    if not api_key:
+        print(f"Key not saved. Add {key_env} to {HOME / '.env'} before online use.")
     return 0
 
 
@@ -585,7 +777,15 @@ def main(argv: list[str] | None = None) -> int:
     ready.set_defaults(func=cmd_ready)
     set_key = sub.add_parser("set-key")
     set_key.add_argument("--value", default="")
+    set_key.add_argument("--env", default="")
     set_key.set_defaults(func=cmd_set_key)
+    setup = sub.add_parser("setup")
+    setup.add_argument("--provider", choices=("deepseek", "openrouter", "custom"), default="")
+    setup.add_argument("--model", default="")
+    setup.add_argument("--base-url", default="")
+    setup.add_argument("--api-key", default="")
+    setup.add_argument("--skip-key", action="store_true")
+    setup.set_defaults(func=cmd_setup)
     audit = sub.add_parser("audit")
     audit.add_argument("--json", action="store_true")
     audit.add_argument("--host", default="")
