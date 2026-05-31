@@ -88,8 +88,8 @@ if ($entries -match "(^|/)home/\.env$|sk-[A-Za-z0-9_-]{16,}") {
   throw "Windows log bundle appears to include a secret"
 }
 foreach ($entry in @("mender.cmd", "Start-Mender.cmd", "Start-Mender.ps1", "support/mender_boot.py")) {
-  $pattern = "(^|/)$([regex]::Escape($entry))$"
-  if (-not ($entries | Where-Object { $_ -match $pattern })) {
+  $leaf = Split-Path $entry -Leaf
+  if (-not ($entries | Where-Object { (Split-Path $_ -Leaf) -eq $leaf })) {
     throw "Windows log bundle missing $entry"
   }
 }
