@@ -5,6 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 bash -n bootstrap.sh
+bash -n mender
 bash -n mender.sh
 bash -n update-mender.sh
 python3 -m py_compile support/mender_boot.py

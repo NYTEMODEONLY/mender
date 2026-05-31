@@ -21,6 +21,8 @@ def require(condition: bool, message: str) -> None:
 
 def main() -> int:
     cmd = read("mender.cmd")
+    unix_mender = read("mender")
+    ps_mender = read("mender.ps1")
     start_ps = read("Start-Mender.ps1")
     bootstrap_ps = read("bootstrap.ps1")
     powershell_check = read("scripts/check-powershell.ps1")
@@ -28,6 +30,8 @@ def main() -> int:
     boot_py = read("support/mender_boot.py")
 
     require("-NoProfile" in cmd, "mender.cmd must launch PowerShell with -NoProfile")
+    require("mender.sh" in unix_mender, "extensionless mender launcher must delegate to mender.sh")
+    require("Start-Mender.ps1" in ps_mender, "mender.ps1 must delegate to Start-Mender.ps1")
     require("Parser]::ParseFile" in powershell_check, "PowerShell check must parse launcher files")
     require("windows-latest" in workflow, "CI must include a Windows launcher check")
     require("macos-latest" in workflow, "CI must include a macOS smoke check")
@@ -37,6 +41,11 @@ def main() -> int:
         require("HERMES_GIT_BASH_PATH" in text, f"{path} must restore Hermes Git Bash user env")
         require("SetEnvironmentVariable(\"Path\", $oldUserPath, \"User\")" in text, f"{path} must restore user PATH")
         require("SetEnvironmentVariable(\"HERMES_HOME\", $oldHermesHome, \"User\")" in text, f"{path} must restore user HERMES_HOME")
+        require("Start-Transcript" in text, f"{path} must write launcher transcripts")
+        require("Write-MenderLauncherFailure" in text, f"{path} must persist launcher failures")
+    require("New-MenderLogBundle" in start_ps, "Start-Mender.ps1 must expose Windows log bundles")
+    require("logs)" in read("mender.sh"), "mender.sh must expose log bundles")
+    require("cmd_logs" in boot_py, "mender_boot.py must implement log bundles")
 
     require("Get-CimInstance Win32_DiskDrive" in boot_py, "Windows inventory must include modern disk CIM checks")
     require("Get-ComputerInfo" in boot_py, "Windows inventory must include modern OS/hardware checks")

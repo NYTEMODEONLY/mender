@@ -16,6 +16,7 @@ import sys
 import uuid
 import urllib.parse
 import urllib.request
+import zipfile
 from pathlib import Path
 
 
@@ -403,6 +404,28 @@ def read_jsonl(path: Path) -> list[dict]:
         except json.JSONDecodeError:
             continue
     return items
+
+
+def should_exclude_from_bundle(path: Path) -> bool:
+    parts = set(path.parts)
+    if ".env" in parts or path.name == ".env":
+        return True
+    if "bundles" in parts and "audit" in parts:
+        return True
+    return False
+
+
+def add_bundle_path(bundle: zipfile.ZipFile, path: Path, arc_prefix: str = "") -> None:
+    if not path.exists() or should_exclude_from_bundle(path):
+        return
+    if path.is_file():
+        arcname = Path(arc_prefix) / path.relative_to(ROOT) if path.is_relative_to(ROOT) else Path(arc_prefix) / path.name
+        bundle.write(path, arcname.as_posix())
+        return
+    for item in path.rglob("*"):
+        if item.is_file() and not should_exclude_from_bundle(item):
+            arcname = Path(arc_prefix) / item.relative_to(ROOT)
+            bundle.write(item, arcname.as_posix())
 
 
 def ensure_mender_files() -> None:
@@ -830,6 +853,41 @@ def cmd_audit(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_logs(args: argparse.Namespace) -> int:
+    ensure_mender_files()
+    stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
+    bundle_dir = AUDIT_ROOT / "bundles"
+    bundle_dir.mkdir(parents=True, exist_ok=True)
+    bundle_path = bundle_dir / f"mender-logs-{stamp}.zip"
+    manifest = {
+        "created_at": now(),
+        "mender_root": str(ROOT),
+        "excluded": ["home/.env", "audit/bundles/*"],
+        "note": "Bundle contains Mender audit/session/launcher logs and non-secret config files.",
+    }
+    with zipfile.ZipFile(bundle_path, "w", compression=zipfile.ZIP_DEFLATED) as bundle:
+        bundle.writestr("bundle-manifest.json", json.dumps(manifest, indent=2, sort_keys=True) + "\n")
+        add_bundle_path(bundle, AUDIT_ROOT)
+        for rel in (
+            "home/config.yaml",
+            "home/SOUL.md",
+            "home/MENDER_PERSONA.md",
+            "README.md",
+            "mender",
+            "mender.sh",
+            "mender.cmd",
+            "mender.ps1",
+            "Start-Mender.ps1",
+            "bootstrap.ps1",
+            "bootstrap.sh",
+            "update-mender.sh",
+            "support/mender_boot.py",
+        ):
+            add_bundle_path(bundle, ROOT / rel)
+    print(f"Mender log bundle: {bundle_path}")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Mender portable boot helper")
     sub = parser.add_subparsers(dest="command", required=True)
@@ -864,6 +922,8 @@ def main(argv: list[str] | None = None) -> int:
     audit.add_argument("--host", default="")
     audit.add_argument("--limit", type=int, default=20)
     audit.set_defaults(func=cmd_audit)
+    logs = sub.add_parser("logs")
+    logs.set_defaults(func=cmd_logs)
     args = parser.parse_args(argv)
     return args.func(args)
 

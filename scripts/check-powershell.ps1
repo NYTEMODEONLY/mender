@@ -3,6 +3,7 @@ $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
 $scripts = @(
   (Join-Path $Root "bootstrap.ps1"),
+  (Join-Path $Root "mender.ps1"),
   (Join-Path $Root "Start-Mender.ps1")
 )
 

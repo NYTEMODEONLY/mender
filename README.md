@@ -45,8 +45,10 @@ Secrets stay in `home/.env` on the portable drive and are ignored by Git. You ca
 Start Mender:
 
 ```bash
-bash mender.sh
+./mender
 ```
+
+On macOS/Linux, shells normally require `./mender` for a command in the current folder. If you add the Mender folder to `PATH`, `mender` works as a bare command.
 
 ## Windows
 
@@ -57,6 +59,8 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1
 .\mender.cmd setup
 .\mender.cmd
 ```
+
+In Command Prompt, `mender` also resolves to `mender.cmd` when you are in the Mender folder. PowerShell requires the explicit `.\` prefix for local commands.
 
 Or set the key from PowerShell after bootstrap:
 
@@ -118,6 +122,20 @@ Windows:
 ```powershell
 .\mender.cmd audit
 ```
+
+Collect a shareable troubleshooting bundle:
+
+```bash
+bash mender.sh logs
+```
+
+Windows:
+
+```powershell
+.\mender.cmd logs
+```
+
+Bundles are written under `audit/bundles/` and intentionally exclude `home/.env`. Windows bootstrap/startup failures are also transcribed under `audit/launcher/`, including failures that happen before Hermes is able to start.
 
 ## Update
 
