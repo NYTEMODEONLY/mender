@@ -721,13 +721,17 @@ def cmd_setup(args: argparse.Namespace) -> int:
         api_key = getpass.getpass(f"{key_env}: ").strip()
     if api_key:
         save_env_value(HOME / ".env", key_env, api_key)
+    env_values = load_env_file(HOME / ".env")
+    key_present = bool(os.environ.get(key_env) or env_values.get(key_env))
 
     print("Mender setup complete")
     print(f"Provider: {provider}")
     print(f"Model: {model}")
     print(f"Config: {HOME / 'config.yaml'}")
     print(f"Secrets: {HOME / '.env'}")
-    if not api_key:
+    if key_present:
+        print(f"{key_env}: present")
+    else:
         print(f"Key not saved. Add {key_env} to {HOME / '.env'} before online use.")
     return 0
 
