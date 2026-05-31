@@ -22,6 +22,9 @@ def require(condition: bool, message: str) -> None:
 def main() -> int:
     cmd = read("mender.cmd")
     unix_mender = read("mender")
+    friendly_command = read("Mender.command")
+    linux_desktop = read("Mender.desktop")
+    mac_app = read("Mender.app/Contents/MacOS/Mender")
     ps_mender = read("mender.ps1")
     start_ps = read("Start-Mender.ps1")
     bootstrap_ps = read("bootstrap.ps1")
@@ -31,6 +34,9 @@ def main() -> int:
 
     require("-NoProfile" in cmd, "mender.cmd must launch PowerShell with -NoProfile")
     require("mender.sh" in unix_mender, "extensionless mender launcher must delegate to mender.sh")
+    require("mender" in friendly_command, "Mender.command must delegate to mender")
+    require("./mender" in linux_desktop, "Mender.desktop must launch ./mender")
+    require("./mender" in mac_app, "Mender.app must launch ./mender")
     require("Start-Mender.ps1" in ps_mender, "mender.ps1 must delegate to Start-Mender.ps1")
     require("Parser]::ParseFile" in powershell_check, "PowerShell check must parse launcher files")
     require("windows-latest" in workflow, "CI must include a Windows launcher check")

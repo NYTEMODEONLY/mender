@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=Mender
+Comment=Start the portable Mender repair agent
+Exec=sh -c 'cd "$(dirname "$1")" && ./mender' mender-launcher %k
+Icon=utilities-terminal
+Terminal=true
+Categories=System;Utility;

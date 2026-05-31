@@ -87,6 +87,8 @@ function New-MenderLogBundle {
     (Join-Path $env:HERMES_HOME "SOUL.md"),
     (Join-Path $env:HERMES_HOME "MENDER_PERSONA.md"),
     (Join-Path $Root "README.md"),
+    (Join-Path $Root "Mender.command"),
+    (Join-Path $Root "Mender.desktop"),
     (Join-Path $Root "mender"),
     (Join-Path $Root "mender.cmd"),
     (Join-Path $Root "mender.ps1"),

@@ -50,6 +50,12 @@ Start Mender:
 
 On macOS/Linux, shells normally require `./mender` for a command in the current folder. If you add the Mender folder to `PATH`, `mender` works as a bare command.
 
+Double-click launchers are also included in the drive root:
+
+- macOS Finder: `Mender.app` or `Mender.command`
+- Windows Explorer / Command Prompt: `mender.cmd`
+- Linux file managers: `Mender.desktop`
+
 ## Windows
 
 Clone the repo onto the portable drive, then run PowerShell from the Mender folder:
@@ -60,7 +66,7 @@ powershell -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1
 .\mender.cmd
 ```
 
-In Command Prompt, `mender` also resolves to `mender.cmd` when you are in the Mender folder. PowerShell requires the explicit `.\` prefix for local commands.
+In Command Prompt, `mender` also resolves to `mender.cmd` when you are in the Mender folder. PowerShell requires the explicit `.\` prefix for local commands, such as `.\mender.cmd` or `.\mender.ps1`.
 
 Or set the key from PowerShell after bootstrap:
 
