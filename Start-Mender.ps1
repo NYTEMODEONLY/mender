@@ -95,6 +95,10 @@ function New-MenderLogBundle {
     (Join-Path $Root "mender.ps1"),
     (Join-Path $Root "Start-Mender.ps1"),
     (Join-Path $Root "bootstrap.ps1"),
+    (Join-Path $Root "scripts\check-powershell.ps1"),
+    (Join-Path $Root "scripts\smoke-test.sh"),
+    (Join-Path $Root "scripts\static-check.py"),
+    (Join-Path $Root "scripts\windows-smoke.ps1"),
     (Join-Path $Root "support\mender_boot.py")
   )) {
     if (Test-Path $candidate) {

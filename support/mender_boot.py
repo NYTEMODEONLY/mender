@@ -923,6 +923,10 @@ def cmd_logs(args: argparse.Namespace) -> int:
             "bootstrap.ps1",
             "bootstrap.sh",
             "update-mender.sh",
+            "scripts/check-powershell.ps1",
+            "scripts/smoke-test.sh",
+            "scripts/static-check.py",
+            "scripts/windows-smoke.ps1",
             "support/mender_boot.py",
         ):
             add_bundle_path(bundle, ROOT / rel)

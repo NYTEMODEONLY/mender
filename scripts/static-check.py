@@ -56,6 +56,8 @@ def main() -> int:
     require("New-MenderLogBundle" in start_ps, "Start-Mender.ps1 must expose Windows log bundles")
     require("Start-Mender.cmd logs" in windows_smoke, "Windows smoke must exercise the .cmd log bundle path")
     require("Required Opening Sequence" in windows_smoke, "Windows smoke must verify startup prompt generation")
+    require("scripts\\windows-smoke.ps1" in start_ps, "Windows log bundles must include the Windows smoke script")
+    require('"scripts/windows-smoke.ps1"' in boot_py, "Python log bundles must include the Windows smoke script")
     require("logs)" in read("mender.sh"), "mender.sh must expose log bundles")
     require("cmd_logs" in boot_py, "mender_boot.py must implement log bundles")
     require("cmd_prelaunch" in boot_py, "mender_boot.py must implement prelaunch setup gating")
