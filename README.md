@@ -129,7 +129,7 @@ Windows:
 .\mender.cmd update-hermes
 ```
 
-`update-hermes` pulls the latest `NousResearch/hermes-agent` source and reinstalls the runtime while preserving Mender's `home/` config, secrets, sessions, and `audit/` logs.
+`update-hermes` pulls the latest `NousResearch/hermes-agent` source and reinstalls the runtime while preserving Mender's `home/` config, secrets, sessions, and `audit/` logs. The macOS/Linux installer HOME is sandboxed under `runtime/host-home` on the drive so update helpers do not need to write Hermes config into the connected computer's user home.
 
 ## Safety
 

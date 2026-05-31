@@ -5,8 +5,32 @@ $env:HERMES_HOME = Join-Path $Root "home"
 $env:HERMES_INSTALL_DIR = Join-Path $Root "hermes-agent"
 $env:UV_LINK_MODE = "copy"
 $env:PYTHONDONTWRITEBYTECODE = "1"
+$MenderUserProfile = Join-Path $Root "runtime\userprofile"
+$MenderLocalAppData = Join-Path $Root "runtime\localappdata"
 
 $Mode = if ($args.Count -gt 0) { $args[0] } else { "start" }
+
+New-Item -ItemType Directory -Force -Path $MenderUserProfile | Out-Null
+New-Item -ItemType Directory -Force -Path $MenderLocalAppData | Out-Null
+
+function Invoke-HermesInstaller {
+  param([string]$InstallerPath)
+
+  $oldUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
+  $oldHermesHome = [Environment]::GetEnvironmentVariable("HERMES_HOME", "User")
+  $oldUserProfile = $env:USERPROFILE
+  $oldLocalAppData = $env:LOCALAPPDATA
+  try {
+    $env:USERPROFILE = $MenderUserProfile
+    $env:LOCALAPPDATA = $MenderLocalAppData
+    & powershell -ExecutionPolicy Bypass -File $InstallerPath -InstallDir $env:HERMES_INSTALL_DIR -HermesHome $env:HERMES_HOME -SkipSetup
+  } finally {
+    $env:USERPROFILE = $oldUserProfile
+    $env:LOCALAPPDATA = $oldLocalAppData
+    [Environment]::SetEnvironmentVariable("Path", $oldUserPath, "User")
+    [Environment]::SetEnvironmentVariable("HERMES_HOME", $oldHermesHome, "User")
+  }
+}
 
 $EnvFile = Join-Path $env:HERMES_HOME ".env"
 if (Test-Path $EnvFile) {
@@ -28,7 +52,7 @@ if ($Mode -eq "update" -or $Mode -eq "update-hermes") {
     git clone --depth 1 https://github.com/NousResearch/hermes-agent.git $env:HERMES_INSTALL_DIR
   }
   git -C $env:HERMES_INSTALL_DIR pull --ff-only origin main
-  powershell -ExecutionPolicy Bypass -File (Join-Path $env:HERMES_INSTALL_DIR "scripts\install.ps1") -InstallDir $env:HERMES_INSTALL_DIR -HermesHome $env:HERMES_HOME -SkipSetup
+  Invoke-HermesInstaller (Join-Path $env:HERMES_INSTALL_DIR "scripts\install.ps1")
   Write-Host "Hermes Agent updated for Mender."
   exit 0
 }
@@ -42,7 +66,7 @@ if (!(Test-Path $HermesExe)) {
     git clone --depth 1 https://github.com/NousResearch/hermes-agent.git $env:HERMES_INSTALL_DIR
   }
   Write-Host "Hermes runtime is missing. Installing/updating on this computer..."
-  & powershell -ExecutionPolicy Bypass -File (Join-Path $env:HERMES_INSTALL_DIR "scripts\install.ps1") -InstallDir $env:HERMES_INSTALL_DIR -HermesHome $env:HERMES_HOME -SkipSetup
+  Invoke-HermesInstaller (Join-Path $env:HERMES_INSTALL_DIR "scripts\install.ps1")
 }
 
 if ($Mode -eq "doctor") {

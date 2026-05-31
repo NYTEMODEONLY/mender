@@ -5,6 +5,7 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export MENDER_ROOT="$SCRIPT_DIR"
 export HERMES_HOME="$MENDER_ROOT/home"
 export HERMES_INSTALL_DIR="$MENDER_ROOT/hermes-agent"
+MENDER_INSTALL_HOME="$MENDER_ROOT/runtime/host-home"
 export COPYFILE_DISABLE=1
 export UV_LINK_MODE=copy
 export PYTHONDONTWRITEBYTECODE=1
@@ -107,7 +108,9 @@ esac
 if [ ! -x "$HERMES_INSTALL_DIR/venv/bin/hermes" ]; then
   ensure_hermes_source
   echo "Hermes runtime is missing. Installing/updating on this computer..."
-  bash "$HERMES_INSTALL_DIR/scripts/install.sh" \
+  mkdir -p "$MENDER_INSTALL_HOME"
+  HOME="$MENDER_INSTALL_HOME" PATH="$MENDER_INSTALL_HOME/.local/bin:$MENDER_INSTALL_HOME/.cargo/bin:$PATH" \
+    bash "$HERMES_INSTALL_DIR/scripts/install.sh" \
     --dir "$HERMES_INSTALL_DIR" \
     --hermes-home "$HERMES_HOME" \
     --skip-setup \
