@@ -54,6 +54,7 @@ def main() -> int:
         require("Start-Transcript" in text, f"{path} must write launcher transcripts")
         require("Write-MenderLauncherFailure" in text, f"{path} must persist launcher failures")
     require("New-MenderLogBundle" in start_ps, "Start-Mender.ps1 must expose Windows log bundles")
+    require('if ($Mode -eq "logs") {\n  Stop-MenderTranscript\n  New-MenderLogBundle' in start_ps, "Start-Mender.ps1 must close transcripts before bundling logs")
     require("Start-Mender.cmd logs" in windows_smoke, "Windows smoke must exercise the .cmd log bundle path")
     require("Required Opening Sequence" in windows_smoke, "Windows smoke must verify startup prompt generation")
     require("scripts\\windows-smoke.ps1" in start_ps, "Windows log bundles must include the Windows smoke script")

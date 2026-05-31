@@ -178,6 +178,7 @@ if ($Mode -eq "update" -or $Mode -eq "update-hermes") {
 }
 
 if ($Mode -eq "logs") {
+  Stop-MenderTranscript
   New-MenderLogBundle
   Exit-Mender 0
 }
