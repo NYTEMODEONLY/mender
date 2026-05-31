@@ -25,4 +25,11 @@ if ($cmd -notmatch "-NoProfile") {
   exit 1
 }
 
+$friendlyCmdPath = Join-Path $Root "Start-Mender.cmd"
+$friendlyCmd = Get-Content $friendlyCmdPath -Raw
+if ($friendlyCmd -notmatch "mender.cmd") {
+  Write-Error "Start-Mender.cmd must delegate to mender.cmd"
+  exit 1
+}
+
 Write-Host "mender PowerShell launcher checks passed"

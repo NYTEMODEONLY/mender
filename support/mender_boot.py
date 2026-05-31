@@ -914,6 +914,7 @@ def cmd_logs(args: argparse.Namespace) -> int:
             "Mender.desktop",
             "Mender.app/Contents/Info.plist",
             "Mender.app/Contents/MacOS/Mender",
+            "Start-Mender.cmd",
             "mender",
             "mender.sh",
             "mender.cmd",

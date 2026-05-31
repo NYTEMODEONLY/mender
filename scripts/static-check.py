@@ -21,6 +21,7 @@ def require(condition: bool, message: str) -> None:
 
 def main() -> int:
     cmd = read("mender.cmd")
+    friendly_cmd = read("Start-Mender.cmd")
     unix_mender = read("mender")
     friendly_command = read("Mender.command")
     linux_desktop = read("Mender.desktop")
@@ -33,6 +34,7 @@ def main() -> int:
     boot_py = read("support/mender_boot.py")
 
     require("-NoProfile" in cmd, "mender.cmd must launch PowerShell with -NoProfile")
+    require("mender.cmd" in friendly_cmd, "Start-Mender.cmd must delegate to mender.cmd")
     require("mender.sh" in unix_mender, "extensionless mender launcher must delegate to mender.sh")
     require("mender" in friendly_command, "Mender.command must delegate to mender")
     require("./mender" in linux_desktop, "Mender.desktop must launch ./mender")

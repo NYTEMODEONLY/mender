@@ -12,7 +12,7 @@ The target computer must have:
 - permission to run shell or PowerShell scripts
 - Python/uv bootstrapping allowed by the host security policy
 
-On a fresh Windows host, run `mender.cmd`. The PowerShell launcher uses the bundled Hermes Windows installer in `hermes-agent/scripts/install.ps1` to create the host-specific Windows virtual environment on the drive.
+On a fresh Windows host, double-click `Start-Mender.cmd` or run `mender.cmd`. The PowerShell launcher uses the bundled Hermes Windows installer in `hermes-agent/scripts/install.ps1` to create the host-specific Windows virtual environment on the drive.
 
 On macOS/Linux, run `bash mender.sh`. The shell launcher uses the Hermes installer in `hermes-agent/scripts/install.sh` if the runtime is missing.
 

@@ -55,7 +55,7 @@ On macOS/Linux, shells normally require `./mender` for a command in the current 
 Double-click launchers are also included in the drive root:
 
 - macOS Finder: `Mender.app` or `Mender.command`
-- Windows Explorer / Command Prompt: `mender.cmd`
+- Windows Explorer / Command Prompt: `Start-Mender.cmd` or `mender.cmd`
 - Linux file managers: `Mender.desktop`
 
 ## Windows
