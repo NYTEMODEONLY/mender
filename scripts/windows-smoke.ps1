@@ -47,7 +47,7 @@ if (!(Test-Path $latestPath)) {
   throw "audit/latest-session.json was not created"
 }
 $latest = Get-Content $latestPath -Raw | ConvertFrom-Json
-foreach ($requiredPath in @($latest.startup_prompt, $latest.startup_json, $latest.active_soul)) {
+foreach ($requiredPath in @($latest.startup_prompt, $latest.startup_json, $latest.active_soul, $latest.notes_jsonl)) {
   if (!(Test-Path $requiredPath)) {
     throw "Expected audit artifact missing: $requiredPath"
   }
@@ -58,9 +58,16 @@ if ((Get-Content $latest.startup_prompt -Raw) -notmatch "Required Opening Sequen
 if ((Get-Content $latest.active_soul -Raw) -notmatch "Active Mender Repair Session") {
   throw "Active SOUL missing repair-session context"
 }
+if ((Get-Content $latest.active_soul -Raw) -notmatch "Audit Note Command") {
+  throw "Active SOUL missing audit note command"
+}
 
-Step "event and finish"
+Step "event note and finish"
 Invoke-Python "support/mender_boot.py" "event" "windows_smoke" "ok"
+Invoke-Python "support/mender_boot.py" "note" "verification" "windows smoke note ok"
+if ((Get-Content $latest.notes_jsonl -Raw) -notmatch "windows smoke note ok") {
+  throw "Mender note was not written to notes.jsonl"
+}
 Invoke-Python "support/mender_boot.py" "finish"
 
 Step "audit index"

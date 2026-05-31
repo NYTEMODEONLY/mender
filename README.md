@@ -113,6 +113,7 @@ The session folder contains:
 - `startup_prompt.md`: the repair-session startup prompt and required opening sequence.
 - `home/SOUL.md`: regenerated at launch from `home/MENDER_PERSONA.md` plus the active startup prompt so Hermes sees the current host context.
 - `events.jsonl`: lifecycle events.
+- `notes.jsonl`: structured repair notes for symptoms, diagnoses, commands, changes, risks, rollback plans, and verification.
 - `terminal.log`: terminal transcript when supported by the host.
 - `manifest.json`: closeout hashes and file sizes.
 
@@ -131,6 +132,18 @@ Windows:
 
 ```powershell
 .\mender.cmd audit
+```
+
+Add a structured repair note to the active session:
+
+```bash
+./mender note verification "Wi-Fi reconnects successfully after renewing DHCP lease"
+```
+
+Windows:
+
+```powershell
+.\mender.cmd note verification "Wi-Fi reconnects successfully after renewing DHCP lease"
 ```
 
 Collect a shareable troubleshooting bundle:

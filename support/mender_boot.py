@@ -490,6 +490,7 @@ def session_paths(profile: dict) -> dict:
         "startup_json": session_dir / "startup.json",
         "startup_prompt": session_dir / "startup_prompt.md",
         "events_jsonl": session_dir / "events.jsonl",
+        "notes_jsonl": session_dir / "notes.jsonl",
         "terminal_log": session_dir / "terminal.log",
     }
 
@@ -515,6 +516,7 @@ You are Mender, a portable computer-repair Hermes Agent running from this storag
 - Session folder: {paths["session_dir"]}
 - Startup inventory: {paths["startup_json"]}
 - Event log: {paths["events_jsonl"]}
+- Repair notes: {paths["notes_jsonl"]}
 - Terminal transcript: {paths["terminal_log"]}
 - Active Hermes identity prompt: {HOME / "SOUL.md"}
 
@@ -532,6 +534,15 @@ You are Mender, a portable computer-repair Hermes Agent running from this storag
 3. Diagnose with read-only commands first.
 4. Explain every repair command before running it, including risk and rollback.
 5. Record what changed, why, and how it was verified.
+
+## Audit Note Command
+
+Use Mender's note command whenever you inspect something important, make a change, verify a result, or decide not to proceed:
+
+- macOS/Linux: `./mender note <category> "<detail>"`
+- Windows: `mender.cmd note <category> "<detail>"`
+
+Recommended categories: `symptom`, `diagnosis`, `command`, `change`, `verification`, `risk`, `rollback`, `handoff`.
 
 Do not claim the computer is fixed until the relevant current-state evidence proves it.
 """
@@ -592,6 +603,7 @@ def update_audit_index(profile: dict, paths: dict, payload: dict) -> None:
             "active_soul": payload["active_soul"]["active_soul_path"],
             "active_soul_sha256": payload["active_soul"]["active_soul_sha256"],
             "events_jsonl": str(paths["events_jsonl"]),
+            "notes_jsonl": str(paths["notes_jsonl"]),
             "terminal_log": str(paths["terminal_log"]),
             "llm_provider": payload["llm"]["provider"],
             "llm_model": payload["llm"]["model"],
@@ -623,6 +635,7 @@ def cmd_start(args: argparse.Namespace) -> int:
     }
     startup_text = startup_prompt_text(profile, paths, payload)
     paths["startup_prompt"].write_text(startup_text, encoding="utf-8")
+    paths["notes_jsonl"].write_text("", encoding="utf-8")
     payload["active_soul"] = write_active_soul(startup_text)
     write_json(paths["startup_json"], payload)
     append_jsonl(paths["events_jsonl"], {"ts": now(), **payload})
@@ -670,6 +683,24 @@ def cmd_event(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_note(args: argparse.Namespace) -> int:
+    data = latest_paths()
+    if not data:
+        print("No active Mender session. Start Mender before adding notes.", file=sys.stderr)
+        return 1
+    category = args.category.strip().lower()
+    detail = " ".join(args.detail).strip()
+    if not category or not detail:
+        print("Usage: note <category> <detail>", file=sys.stderr)
+        return 2
+    note = {"ts": now(), "event": "mender_note", "category": category, "detail": detail}
+    notes_path = Path(data.get("notes_jsonl") or Path(data["session_dir"]) / "notes.jsonl")
+    append_jsonl(notes_path, note)
+    append_jsonl(Path(data["events_jsonl"]), note)
+    print(f"Recorded Mender note: {category}")
+    return 0
+
+
 def cmd_finish(args: argparse.Namespace) -> int:
     data = latest_paths()
     if not data:
@@ -681,7 +712,7 @@ def cmd_finish(args: argparse.Namespace) -> int:
         "host_id": data.get("host_id"),
         "files": {},
     }
-    for name in ("startup_json", "startup_prompt", "active_soul", "events_jsonl", "terminal_log"):
+    for name in ("startup_json", "startup_prompt", "active_soul", "events_jsonl", "notes_jsonl", "terminal_log"):
         if name not in data:
             continue
         path = Path(data[name])
@@ -944,6 +975,10 @@ def main(argv: list[str] | None = None) -> int:
     event.add_argument("name")
     event.add_argument("detail", nargs="?", default="")
     event.set_defaults(func=cmd_event)
+    note = sub.add_parser("note")
+    note.add_argument("category")
+    note.add_argument("detail", nargs="+")
+    note.set_defaults(func=cmd_note)
     finish = sub.add_parser("finish")
     finish.set_defaults(func=cmd_finish)
     doctor = sub.add_parser("doctor")

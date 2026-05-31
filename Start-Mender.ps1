@@ -231,8 +231,16 @@ if ($Mode -eq "audit") {
   & $PythonExe (Join-Path $Root "support\mender_boot.py") @auditArgs
   Exit-Mender $LASTEXITCODE
 }
+if ($Mode -eq "note") {
+  $noteArgs = @("note")
+  if ($args.Count -gt 1) {
+    $noteArgs += $args[1..($args.Count - 1)]
+  }
+  & $PythonExe (Join-Path $Root "support\mender_boot.py") @noteArgs
+  Exit-Mender $LASTEXITCODE
+}
 if ($Mode -ne "start" -and $Mode -ne "") {
-  Write-Host "Usage: .\mender.cmd [start|setup|doctor|doctor-json|ready|set-key|audit|logs|update|update-hermes]"
+  Write-Host "Usage: .\mender.cmd [start|setup|doctor|doctor-json|ready|set-key|audit|note|logs|update|update-hermes]"
   Exit-Mender 2
 }
 

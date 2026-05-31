@@ -99,6 +99,15 @@ case "${1:-start}" in
     "$BOOT_PY" "$MENDER_ROOT/support/mender_boot.py" audit "$@"
     exit $?
     ;;
+  note)
+    if [ -z "$BOOT_PY" ]; then
+      echo "No Python runtime found for Mender notes."
+      exit 1
+    fi
+    shift || true
+    "$BOOT_PY" "$MENDER_ROOT/support/mender_boot.py" note "$@"
+    exit $?
+    ;;
   logs)
     if [ -z "$BOOT_PY" ]; then
       echo "No Python runtime found for Mender log collection."
@@ -113,7 +122,7 @@ case "${1:-start}" in
   start|"")
     ;;
   *)
-    echo "Usage: $0 [start|setup|doctor|doctor-json|ready|set-key|audit|logs|update|update-hermes]"
+    echo "Usage: $0 [start|setup|doctor|doctor-json|ready|set-key|audit|note|logs|update|update-hermes]"
     exit 2
     ;;
 esac

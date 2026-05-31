@@ -83,8 +83,17 @@ PY
 test -f "$active_soul"
 grep -q "Active Mender Repair Session" "$active_soul"
 grep -q "Required Opening Sequence" "$active_soul"
-smoke_step "event and finish"
+grep -q "Audit Note Command" "$active_soul"
+smoke_step "event note and finish"
 python3 support/mender_boot.py event smoke "ok"
+python3 support/mender_boot.py note verification "smoke note ok"
+notes_path="$(python3 - <<'PY'
+import json
+print(json.load(open("audit/latest-session.json"))["notes_jsonl"])
+PY
+)"
+test -f "$notes_path"
+grep -q "smoke note ok" "$notes_path"
 python3 support/mender_boot.py finish
 smoke_step "audit"
 python3 support/mender_boot.py audit --json > "$tmp_audit/audit.json"
@@ -96,6 +105,7 @@ assert isinstance(data, list)
 assert data
 assert "startup_prompt" in data[-1]
 assert "active_soul" in data[-1]
+assert "notes_jsonl" in data[-1]
 PY
 smoke_step "ready"
 python3 support/mender_boot.py ready --json > "$tmp_audit/ready.json" || true
