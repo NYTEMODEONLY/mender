@@ -32,3 +32,6 @@ jobs:
       - name: PowerShell launcher syntax
         shell: powershell
         run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-powershell.ps1
+      - name: Windows smoke
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\windows-smoke.ps1

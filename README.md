@@ -76,6 +76,8 @@ Or set the key from PowerShell after bootstrap:
 .\mender.cmd set-key
 ```
 
+The project CI runs a Windows smoke test that exercises setup, prelaunch, audit creation, event logging, session finish, and `Start-Mender.cmd logs` on `windows-latest`. A real USB run on a physical Windows computer is still the final portability proof.
+
 ## Healthcheck
 
 ```bash

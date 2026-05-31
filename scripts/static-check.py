@@ -30,6 +30,7 @@ def main() -> int:
     start_ps = read("Start-Mender.ps1")
     bootstrap_ps = read("bootstrap.ps1")
     powershell_check = read("scripts/check-powershell.ps1")
+    windows_smoke = read("scripts/windows-smoke.ps1")
     workflow = read(".github/workflows/smoke.yml")
     boot_py = read("support/mender_boot.py")
 
@@ -42,6 +43,7 @@ def main() -> int:
     require("Start-Mender.ps1" in ps_mender, "mender.ps1 must delegate to Start-Mender.ps1")
     require("Parser]::ParseFile" in powershell_check, "PowerShell check must parse launcher files")
     require("windows-latest" in workflow, "CI must include a Windows launcher check")
+    require("windows-smoke.ps1" in workflow, "CI must run the Windows smoke script")
     require("macos-latest" in workflow, "CI must include a macOS smoke check")
     for path, text in (("Start-Mender.ps1", start_ps), ("bootstrap.ps1", bootstrap_ps)):
         require("Invoke-HermesInstaller" in text, f"{path} must sandbox Hermes installer calls")
@@ -52,6 +54,8 @@ def main() -> int:
         require("Start-Transcript" in text, f"{path} must write launcher transcripts")
         require("Write-MenderLauncherFailure" in text, f"{path} must persist launcher failures")
     require("New-MenderLogBundle" in start_ps, "Start-Mender.ps1 must expose Windows log bundles")
+    require("Start-Mender.cmd logs" in windows_smoke, "Windows smoke must exercise the .cmd log bundle path")
+    require("Required Opening Sequence" in windows_smoke, "Windows smoke must verify startup prompt generation")
     require("logs)" in read("mender.sh"), "mender.sh must expose log bundles")
     require("cmd_logs" in boot_py, "mender_boot.py must implement log bundles")
     require("cmd_prelaunch" in boot_py, "mender_boot.py must implement prelaunch setup gating")
