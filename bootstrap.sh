@@ -4,18 +4,14 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export HERMES_HOME="$ROOT/home"
 export HERMES_INSTALL_DIR="$ROOT/hermes-agent"
-MENDER_RUNTIME_DIR="$ROOT/runtime"
 MENDER_INSTALL_HOME="${TMPDIR:-/tmp}/mender-install-home-${UID:-user}"
 export COPYFILE_DISABLE=1
 export UV_LINK_MODE=copy
-export UV_PYTHON_INSTALL_DIR="$MENDER_RUNTIME_DIR/uv/python"
-export UV_PYTHON_BIN_DIR="$MENDER_RUNTIME_DIR/uv/bin"
+export UV_PYTHON_INSTALL_DIR="$MENDER_INSTALL_HOME/uv-python"
 export UV_CACHE_DIR="$MENDER_INSTALL_HOME/uv-cache"
-export UV_TOOL_DIR="$MENDER_RUNTIME_DIR/uv/tools"
-export UV_PYTHON_PREFERENCE=only-managed
 export PYTHONDONTWRITEBYTECODE=1
 
-mkdir -p "$HERMES_HOME" "$ROOT/audit" "$MENDER_RUNTIME_DIR" "$MENDER_INSTALL_HOME"
+mkdir -p "$HERMES_HOME" "$ROOT/audit" "$ROOT/runtime" "$MENDER_INSTALL_HOME"
 
 if [ ! -d "$HERMES_INSTALL_DIR/.git" ]; then
   rm -rf "$HERMES_INSTALL_DIR"

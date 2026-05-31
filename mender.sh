@@ -5,15 +5,11 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export MENDER_ROOT="$SCRIPT_DIR"
 export HERMES_HOME="$MENDER_ROOT/home"
 export HERMES_INSTALL_DIR="$MENDER_ROOT/hermes-agent"
-MENDER_RUNTIME_DIR="$MENDER_ROOT/runtime"
 MENDER_INSTALL_HOME="${TMPDIR:-/tmp}/mender-install-home-${UID:-user}"
 export COPYFILE_DISABLE=1
 export UV_LINK_MODE=copy
-export UV_PYTHON_INSTALL_DIR="$MENDER_RUNTIME_DIR/uv/python"
-export UV_PYTHON_BIN_DIR="$MENDER_RUNTIME_DIR/uv/bin"
+export UV_PYTHON_INSTALL_DIR="$MENDER_INSTALL_HOME/uv-python"
 export UV_CACHE_DIR="$MENDER_INSTALL_HOME/uv-cache"
-export UV_TOOL_DIR="$MENDER_RUNTIME_DIR/uv/tools"
-export UV_PYTHON_PREFERENCE=only-managed
 export PYTHONDONTWRITEBYTECODE=1
 
 load_mender_env() {
@@ -51,6 +47,12 @@ ensure_hermes_source() {
     rm -rf "$HERMES_INSTALL_DIR"
     git clone --depth 1 https://github.com/NousResearch/hermes-agent.git "$HERMES_INSTALL_DIR"
   fi
+}
+
+hermes_runtime_usable() {
+  [ -x "$HERMES_INSTALL_DIR/venv/bin/hermes" ] || return 1
+  [ -x "$HERMES_INSTALL_DIR/venv/bin/python" ] || return 1
+  "$HERMES_INSTALL_DIR/venv/bin/python" -V >/dev/null 2>&1 || return 1
 }
 
 case "${1:-start}" in
@@ -145,7 +147,7 @@ case "${1:-start}" in
     ;;
 esac
 
-if [ ! -x "$HERMES_INSTALL_DIR/venv/bin/hermes" ]; then
+if ! hermes_runtime_usable; then
   ensure_hermes_source
   echo "Hermes runtime is missing. Installing/updating on this computer..."
   mkdir -p "$MENDER_INSTALL_HOME"

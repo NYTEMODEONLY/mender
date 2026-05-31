@@ -4,17 +4,13 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export HERMES_HOME="$SCRIPT_DIR/home"
 export HERMES_INSTALL_DIR="$SCRIPT_DIR/hermes-agent"
-MENDER_RUNTIME_DIR="$SCRIPT_DIR/runtime"
 MENDER_INSTALL_HOME="${TMPDIR:-/tmp}/mender-install-home-${UID:-user}"
 export COPYFILE_DISABLE=1
 export UV_LINK_MODE=copy
-export UV_PYTHON_INSTALL_DIR="$MENDER_RUNTIME_DIR/uv/python"
-export UV_PYTHON_BIN_DIR="$MENDER_RUNTIME_DIR/uv/bin"
+export UV_PYTHON_INSTALL_DIR="$MENDER_INSTALL_HOME/uv-python"
 export UV_CACHE_DIR="$MENDER_INSTALL_HOME/uv-cache"
-export UV_TOOL_DIR="$MENDER_RUNTIME_DIR/uv/tools"
-export UV_PYTHON_PREFERENCE=only-managed
 export PYTHONDONTWRITEBYTECODE=1
-mkdir -p "$MENDER_RUNTIME_DIR" "$MENDER_INSTALL_HOME"
+mkdir -p "$SCRIPT_DIR/runtime" "$MENDER_INSTALL_HOME"
 
 if ! command -v git >/dev/null 2>&1; then
   echo "Git is required to update Hermes Agent."

@@ -319,6 +319,9 @@ def install_snapshot(system: str) -> dict:
         "hermes_python_exists": python_path.exists(),
         "hermes_python_resolved": str(python_resolved),
         "hermes_python_on_drive": path_resolves_under(python_path, ROOT) if python_path.exists() else False,
+        "hermes_python_usable": run_capture([str(python_path), "-V"], timeout=8).get("returncode") == 0
+        if python_path.exists()
+        else False,
     }
     if os.environ.get("MENDER_SMOKE_FAST"):
         snap["fast_probe"] = True
@@ -791,7 +794,7 @@ def readiness_report() -> dict:
     report["ready"] = bool(
         report["install"]["hermes_repo_exists"]
         and report["install"]["hermes_bin_exists"]
-        and report["install"]["hermes_python_on_drive"]
+        and report["install"]["hermes_python_usable"]
         and report["install"]["config_exists"]
         and report["llm_key_present"]
         and report["network"].get("ok", False)
@@ -809,7 +812,8 @@ def cmd_ready(args: argparse.Namespace) -> int:
         print("----------------")
         print(f"Hermes repo: {'ok' if report['install']['hermes_repo_exists'] else 'missing'}")
         print(f"Hermes executable: {'ok' if report['install']['hermes_bin_exists'] else 'missing'}")
-        print(f"Hermes Python on drive: {'ok' if report['install']['hermes_python_on_drive'] else 'missing'}")
+        print(f"Hermes Python usable: {'ok' if report['install']['hermes_python_usable'] else 'missing'}")
+        print(f"Hermes Python on drive: {'yes' if report['install']['hermes_python_on_drive'] else 'no'}")
         print(f"Hermes config: {'ok' if report['install']['config_exists'] else 'missing'}")
         print(f"LLM provider: {report['llm']['provider']}")
         print(f"LLM model: {report['llm']['model']}")

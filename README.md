@@ -199,7 +199,7 @@ Windows:
 .\mender.cmd update-hermes
 ```
 
-`update-hermes` pulls the latest `NousResearch/hermes-agent` source and reinstalls the runtime while preserving Mender's `home/` config, secrets, sessions, and `audit/` logs. Installer scratch HOME and transient uv build caches are sandboxed under the connected computer's temp directory, while uv's managed Python store is kept under `runtime/uv/python/` on the drive.
+`update-hermes` pulls the latest `NousResearch/hermes-agent` source and reinstalls the runtime while preserving Mender's `home/` config, secrets, sessions, and `audit/` logs. Installer scratch HOME, uv's managed Python store, and transient build caches are sandboxed under the connected computer's temp directory. If a copied drive contains a stale venv from another host, Mender detects it and reinstalls the host runtime automatically.
 
 `update-mender` pulls from `NYTEMODEONLY/mender` when the drive has a Git checkout. If Mender was copied onto the drive without `.git`, it falls back to the GitHub release archive and overlays only project files, leaving local secrets, audit data, and Hermes runtime untouched.
 

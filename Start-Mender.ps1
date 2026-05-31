@@ -5,11 +5,8 @@ $env:HERMES_HOME = Join-Path $Root "home"
 $env:HERMES_INSTALL_DIR = Join-Path $Root "hermes-agent"
 $MenderRuntime = Join-Path $Root "runtime"
 $env:UV_LINK_MODE = "copy"
-$env:UV_PYTHON_INSTALL_DIR = Join-Path $MenderRuntime "uv\python"
-$env:UV_PYTHON_BIN_DIR = Join-Path $MenderRuntime "uv\bin"
+$env:UV_PYTHON_INSTALL_DIR = Join-Path $MenderInstallScratch "uv-python"
 $env:UV_CACHE_DIR = Join-Path $MenderInstallScratch "uv-cache"
-$env:UV_TOOL_DIR = Join-Path $MenderRuntime "uv\tools"
-$env:UV_PYTHON_PREFERENCE = "only-managed"
 $env:PYTHONDONTWRITEBYTECODE = "1"
 $MenderInstallScratch = Join-Path ([System.IO.Path]::GetTempPath()) "mender-install-home"
 $MenderUserProfile = Join-Path $MenderInstallScratch "userprofile"
@@ -152,6 +149,14 @@ function Invoke-HermesInstaller {
   }
 }
 
+function Test-HermesRuntime {
+  if (!(Test-Path $HermesExe) -or !(Test-Path $PythonExe)) {
+    return $false
+  }
+  & $PythonExe -V *> $null
+  return $LASTEXITCODE -eq 0
+}
+
 function Set-MenderExecutableBits {
   foreach ($candidate in @(
     (Join-Path $Root "mender"),
@@ -273,7 +278,7 @@ if ($Mode -eq "logs") {
   Exit-Mender 0
 }
 
-if (!(Test-Path $HermesExe)) {
+if (!(Test-HermesRuntime)) {
   if (!(Test-Path (Join-Path $env:HERMES_INSTALL_DIR ".git"))) {
     Write-Host "Hermes Agent source is missing. Cloning NousResearch/hermes-agent..."
     if (Test-Path $env:HERMES_INSTALL_DIR) {
