@@ -23,9 +23,14 @@ def main() -> int:
     cmd = read("mender.cmd")
     start_ps = read("Start-Mender.ps1")
     bootstrap_ps = read("bootstrap.ps1")
+    powershell_check = read("scripts/check-powershell.ps1")
+    workflow = read(".github/workflows/smoke.yml")
     boot_py = read("support/mender_boot.py")
 
     require("-NoProfile" in cmd, "mender.cmd must launch PowerShell with -NoProfile")
+    require("Parser]::ParseFile" in powershell_check, "PowerShell check must parse launcher files")
+    require("windows-latest" in workflow, "CI must include a Windows launcher check")
+    require("macos-latest" in workflow, "CI must include a macOS smoke check")
     for path, text in (("Start-Mender.ps1", start_ps), ("bootstrap.ps1", bootstrap_ps)):
         require("Invoke-HermesInstaller" in text, f"{path} must sandbox Hermes installer calls")
         require("-NoProfile" in text, f"{path} must launch nested PowerShell with -NoProfile")

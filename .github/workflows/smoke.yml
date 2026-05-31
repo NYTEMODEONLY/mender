@@ -6,10 +6,29 @@ on:
 
 jobs:
   smoke:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
       - run: bash scripts/smoke-test.sh
+
+  windows-launchers:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Static checks
+        run: python scripts/static-check.py
+      - name: Python syntax
+        run: python -m py_compile support/mender_boot.py scripts/static-check.py
+      - name: PowerShell launcher syntax
+        shell: powershell
+        run: powershell -NoProfile -ExecutionPolicy Bypass -File .\scripts\check-powershell.ps1

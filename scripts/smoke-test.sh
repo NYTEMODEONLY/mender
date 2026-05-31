@@ -9,6 +9,11 @@ bash -n mender.sh
 bash -n update-mender.sh
 python3 -m py_compile support/mender_boot.py
 python3 scripts/static-check.py
+if command -v pwsh >/dev/null 2>&1; then
+  pwsh -NoProfile -ExecutionPolicy Bypass -File scripts/check-powershell.ps1
+elif command -v powershell >/dev/null 2>&1; then
+  powershell -NoProfile -ExecutionPolicy Bypass -File scripts/check-powershell.ps1
+fi
 
 tmp_home="$(mktemp -d)"
 tmp_audit="$(mktemp -d)"
