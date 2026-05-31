@@ -19,17 +19,19 @@ function Invoke-HermesInstaller {
 
   $oldUserPath = [Environment]::GetEnvironmentVariable("Path", "User")
   $oldHermesHome = [Environment]::GetEnvironmentVariable("HERMES_HOME", "User")
+  $oldHermesGitBashPath = [Environment]::GetEnvironmentVariable("HERMES_GIT_BASH_PATH", "User")
   $oldUserProfile = $env:USERPROFILE
   $oldLocalAppData = $env:LOCALAPPDATA
   try {
     $env:USERPROFILE = $MenderUserProfile
     $env:LOCALAPPDATA = $MenderLocalAppData
-    & powershell -ExecutionPolicy Bypass -File $InstallerPath -InstallDir $env:HERMES_INSTALL_DIR -HermesHome $env:HERMES_HOME -SkipSetup
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $InstallerPath -InstallDir $env:HERMES_INSTALL_DIR -HermesHome $env:HERMES_HOME -SkipSetup
   } finally {
     $env:USERPROFILE = $oldUserProfile
     $env:LOCALAPPDATA = $oldLocalAppData
     [Environment]::SetEnvironmentVariable("Path", $oldUserPath, "User")
     [Environment]::SetEnvironmentVariable("HERMES_HOME", $oldHermesHome, "User")
+    [Environment]::SetEnvironmentVariable("HERMES_GIT_BASH_PATH", $oldHermesGitBashPath, "User")
   }
 }
 

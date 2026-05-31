@@ -319,6 +319,15 @@ def drive_snapshot(system: str) -> dict:
         snap["diskutil"] = run_capture(["diskutil", "info", str(ROOT)], timeout=8)
     elif system == "Windows":
         snap["volume"] = run_capture(["cmd", "/c", "wmic logicaldisk get caption,filesystem,freespace,size,volumename"], timeout=8)
+        snap["volume_powershell"] = run_capture(
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Get-CimInstance Win32_LogicalDisk | Select-Object DeviceID,VolumeName,FileSystem,FreeSpace,Size | ConvertTo-Json -Compress",
+            ],
+            timeout=12,
+        )
     else:
         snap["mount"] = run_capture(["mount"], timeout=8)
     return snap
@@ -338,6 +347,24 @@ def command_inventory(system: str) -> list[dict]:
         commands = [
             ["cmd", "/c", "ver"],
             ["whoami"],
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Get-ComputerInfo | Select-Object WindowsProductName,WindowsVersion,OsHardwareAbstractionLayer,CsManufacturer,CsModel,CsTotalPhysicalMemory | ConvertTo-Json -Compress",
+            ],
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Get-CimInstance Win32_DiskDrive | Select-Object Model,Size,Status,InterfaceType,MediaType | ConvertTo-Json -Compress",
+            ],
+            [
+                "powershell",
+                "-NoProfile",
+                "-Command",
+                "Get-NetIPConfiguration | ConvertTo-Json -Depth 4 -Compress",
+            ],
             ["wmic", "computersystem", "get", "model,manufacturer,totalphysicalmemory"],
             ["wmic", "diskdrive", "get", "model,size,status"],
             ["ipconfig", "/all"],

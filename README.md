@@ -53,7 +53,7 @@ bash mender.sh
 Clone the repo onto the portable drive, then run PowerShell from the Mender folder:
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File .\bootstrap.ps1
+powershell -NoProfile -ExecutionPolicy Bypass -File .\bootstrap.ps1
 .\mender.cmd setup
 .\mender.cmd
 ```

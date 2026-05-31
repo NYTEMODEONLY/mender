@@ -8,6 +8,7 @@ bash -n bootstrap.sh
 bash -n mender.sh
 bash -n update-mender.sh
 python3 -m py_compile support/mender_boot.py
+python3 scripts/static-check.py
 
 tmp_home="$(mktemp -d)"
 tmp_audit="$(mktemp -d)"
